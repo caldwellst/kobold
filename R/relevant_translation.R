@@ -33,7 +33,8 @@ convert_countsel <- function(string) {
 convert_relevant <- function(string) {
    string <- str_replace_all(string, "count-selected\\((.*?)\\)", convert_countsel)
    string <- str_replace_all(string, "selected\\((.*?)\\)", convert_selected)
-   string <- str_replace_all(string, c("and" = "&", "or" = "|", "not" = "!"))
+   string <- str_replace_all(string, c("and" = "&", "or" = "|", "not" = "!", "=" = "=="))
    string <- str_replace_all(string, "\\$\\{(.*?)\\}", var_extract)
+   string <- parse_expr(string)
    return(string)
 }
