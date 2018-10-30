@@ -6,3 +6,6 @@ remove_survey <- function(df, filter) {
    df <- filter(df, eval(filter))
 
 }
+
+## Change class of vectors based on the XLSForm survey design
+

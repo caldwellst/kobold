@@ -1,26 +1,35 @@
+## Reading in the form
+
 readxls_form <- function(file,
-                         choices = "choices",
-                         survey = "survey",
                          data = "data",
-                         cleaning = "cleaning") {
+                         cleaning = "cleaning",
+                         survey = "survey",
+                         choices = "choices") {
    ## Select only the sheets of the file that we need
    worksheets <- readxl::excel_sheets(file)
    worksheets <- worksheets[worksheets %in% c(choices, survey, data, cleaning)]
 
-   ## Loading all data into a list
-   file_list <- lapply(worksheets, function(x) {
-      df <- read_excel(file, sheet = x)
-   })
+   ## Loading the Excel sheets into a new class so we can make all names of the list objects the same
+   object <- new_kobold(data = read_excel(file, sheet = data),
+                        cleaning = read_excel(file, sheet = cleaning),
+                        survey = read_excel(file, sheet = survey),
+                        choices = read_excel(file, sheet = choices))
 
-   name_frame <- data.frame(matrix(c(choices, survey, data, cleaning, "choices", "survey", "data", "cleaning"),
-                                   nrow = 4,
-                                   ncol = 2),
-                            stringsAsFactors = F)
+   ## Function for converting columns to the proper type within the data sheet of the kobold object
+   convert_columns <- function(types, converter) {
+      retype_names <- c(subset(object$survey, type %in% types)$name)
+      retype_cols <- unique(retype_names[retype_names %in% names(object$data)])
+      suppressWarnings(suppressMessages(
+         object$data[retype_cols] <<- mutate_all(object$data[retype_cols], converter)
+      ))
+   }
 
-   worksheets <- sapply(worksheets, function(x) {
-      name_frame[name_frame[,1] == x, 2]
-   })
-   names(file_list) <- worksheets
+   ## Converting the columns for each type
+   convert_columns(c("decimal", "integer"), as.numeric)
+   convert_columns(c("boolean"), as.logical)
+   convert_columns(c("select one", "imei", "simserial", "deviceid", "phonenumber"), as.character)
+   convert_columns(c("start", "end", "today"), as_datetime)
 
-   return(file_list)
+   ## And return the list!
+   return(object)
 }
