@@ -10,9 +10,14 @@ convert_relevant(string)
 \item{string}{String to be interpreted, should be of the standard format for relevant logic within XLS Forms.}
 }
 \description{
-`convert_relevant` converts relevant relevant logic from XLS Form into R language.
+\code{convert_relevant} converts relevant relevant logic from XLS Form into an R language equivalent.
 }
 \details{
 Takes in a string of relevant logic from XLS Form and converts all portions of it into returns a parsed expression that
-can be passed to `dplyr::filter` and used to filter data frames.
+  can be passed to \code{dplyr::filter} and used to filter data frames.
+}
+\examples{
+convert_relevant("selected(${employed_by_empire}, 'yes')")
+convert_relevant("selected(${employed_by_empire}, 'yes') and count-selected(${livelihoods_coping}) > 3")
+
 }

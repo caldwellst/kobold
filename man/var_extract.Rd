@@ -9,12 +9,12 @@ var_extract(string)
 \arguments{
 \item{string}{String to be interpreted, should be of the format "${var}"}
 }
-\description{
-`convert_selected` extracts a variable from the XLS Form
-format of ${var} and removes the bracketing.
+\value{
+String value of the variable, which can be parsed for use in filtering datasets.
+  Works together with other internal functions to fully interpret relevant logic string from XLS Form
+  coding in `convert_relevant`.
 }
-\details{
-Returns a string value of the variable, which can be parsed for use in filtering datasets.
-Works together with other internal functions to fully interpret relevant logic string from XLS Form
-coding in `convert_relevant`.
+\description{
+`convert_selected` extracts the variable from the XLS Form
+  format of ${variable}.
 }

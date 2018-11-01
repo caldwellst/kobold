@@ -9,13 +9,12 @@ convert_countsel(string)
 \arguments{
 \item{string}{String to be interpreted, should be of the format "count-selected(${var})"}
 }
-\description{
-`convert_countsel` converts count-selected(${var}) into R langage of the format
-str_count(var, " ").
-}
-\details{
-Takes in a string of the format count-selected(${var}) and returns a string
+\value{
+Returns a string
 value of the format str_count(var, ' '), which can be #' parsed for use in filtering
 datasets. Works together with other internal functions #' to fully intrepet relevant
 logic strings from XLS Form coding in `convert_relevant`.
+}
+\description{
+`convert_countsel` converts count-selected(${var}) into an equivalent R statement.
 }

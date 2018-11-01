@@ -1,6 +1,6 @@
 Package: kobold
 Type: Package
-Title: Easy data management/analysis for XLSForm surveys
+Title: Easy data cleaning for XLSForm surveys
 Version: 0.0.0.9000
 Authors@R: person("Seth", "Caldwell", email = "caldwellst@gmail.com", role = c("aut", "cre"))
 Description: This package provides a framework for cleaning of survey datasets, particularly through the use
@@ -9,4 +9,9 @@ Depends: R (>= 3.4.4)
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-Imports: readxl, rlang, stringr, dplyr
+Imports: 
+   readxl,
+   rlang, 
+   stringr,
+   dplyr
+RoxygenNote: 6.1.0

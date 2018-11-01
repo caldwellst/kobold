@@ -9,12 +9,11 @@ convert_selected(string)
 \arguments{
 \item{string}{String to be interpreted, should be of the format "selected(${var}, val)"}
 }
-\description{
-`convert_selected` converts selected(var, val) into R language of the format
-var %in% 'val'.
+\value{
+String value of the format var %in% 'val', which can be
+  parsed for use in filtering datasets. Works together with other internal functions
+  to fully intrepet relevant logic strings from XLS Form coding in `convert_relevant`.
 }
-\details{
-Returns a string value of the format var %in% 'val', which can be
-parsed for use in filtering datasets. Works together with other internal functions
-to fully intrepet relevant logic strings from XLS Form coding in `convert_relevant`.
+\description{
+`convert_selected` converts selected(var, val) into an equivalent R statement.
 }
