@@ -17,8 +17,10 @@
 #'
 #' @importFrom readxl excel_sheets read_excel
 #' @importFrom stringr str_remove_all str_detect str_match
-#' @importFrom dplyr mutate_all
+#' @importFrom dplyr mutate_all select
+#' @importFrom tidyselect matches
 #' @importFrom lubridate as_datetime
+#' @importFrom magritter %>%
 #'
 #' @export
 read_xls_form <- function(filepath,
@@ -55,15 +57,22 @@ read_xls_form <- function(filepath,
    convert_columns(c("start", "end", "today", "date", "time", "dateTime"), as_datetime)
 
    ## Function to convert columns of select_multiple individual options to logical vectors
-   convert_select_multiple <- function(converter) {
-      retype_lists <- c(subset(object$survey, str_detect(type, c("select_multiple", "select multiple")))$list_name)
-      retype_names <- c(subset(object$survey, str_detect(type, c("select_multiple", "select multiple")))$name)
-      retype_lists <- str_remove_all(retype_lists, "^.*(select_multiple|select multiple| |select_one|select one)")
-      retype_cols <- unique(retype_names[retype_names %in% names(object$data)])
+   convert_select_multiple <- function() {
+      retype_lists <- c(subset(object$survey, str_detect(type, "^.*(select_multiple|select multiple)"))$list_name)
+      retype_lists <- paste0("^.*(", paste(retype_lists, collapse = "|"), ")s")
+      retype_choice_names <- c(subset(object$choices, str_detect(list_name, retype_lists))$name)
+      retype_choice_names <- paste0("(", paste(retype_choice_names, collapse = "|"), ")$")
+      retype_names <- c(subset(object$survey, str_detect(type, "^.*(select_multiple|select multiple)"))$name)
+      retype_names <- paste0("^(", paste(retype_names, collapse = "|"), ")")
+      retype_cols <- unique(names(object$data %>%
+                                     select(matches(retype_names)) %>%
+                                     select(matches(retype_choice_names))))
       suppressWarnings(suppressMessages(
-         object$data[retype_cols] <<- mutate_all(object$data[retype_cols], converter)
+         object$data[retype_cols] <<- mutate_all(object$data[retype_cols], function(x) as.logical(as.numeric(x)))
       ))
    }
+
+   convert_select_multiple()
 
    ## And return the list!
    return(object)
