@@ -18,3 +18,7 @@ logic strings from XLS Form coding in `convert_relevant`.
 \description{
 `convert_countsel` converts count-selected(${var}) into an equivalent R statement.
 }
+\examples{
+convert_countsel("count-selected(${livelihoods})")
+
+}

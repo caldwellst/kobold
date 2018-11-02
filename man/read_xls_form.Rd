@@ -16,17 +16,17 @@ read_xls_form(filepath, data = "data", cleaning = "cleaning",
 
 \item{survey}{Name of the survey worksheet, Default: 'survey'}
 
-\item{choices}{Name of the choices worksheet, optional, Default: ' choices;}
+\item{choices}{Name of the choices worksheet, optional, Default: 'choices';}
 }
 \value{
-Returns a `kobold` class object, a modified list containing the above data frames.
+Returns a \code{kobold} class object, a modified list containing the above data frames.
 }
 \description{
-`read_xls_form` loads an XLS Form and its accompanying data into R.
+\code{read_xls_form} loads an XLS Form and its accompanying data into R.
 }
 \details{
 This function loads XLS Form Excel files into R, while also allowing additional sheets for exported data and cleaning.
-It's loaded as an S3 class `kobold`, and can be worked with using functions within this package, or the data can
+It's loaded as an S3 class \code{kobold}, and can be worked with using functions within this package, or the data can
 be retrieved as a data frame or tibble using generics. The columns of the data are given a class according to the
 survey and choices sheet.
 }

@@ -11,7 +11,7 @@
 #'
 #' @param string String to be interpreted, should be of the format "selected(${var}, val)"
 #'
-#' @example convert_selected("selected(${refugee_origin}, 'hoth')")
+#' @examples convert_selected("selected(${refugee_origin}, 'hoth')")
 #'
 #' @importFrom stringr str_match
 #'
@@ -31,7 +31,7 @@ convert_selected <- function(string) {
 #'
 #' @param string String to be interpreted, should be of the format "${var}"
 #'
-#' @example var_extract("${supports_rebels}")
+#' @examples var_extract("${supports_rebels}")
 #'
 #' @importFrom stringr str_match
 var_extract <- function(string) {
@@ -48,7 +48,7 @@ var_extract <- function(string) {
 #'
 #' @param string String to be interpreted, should be of the format "count-selected(${var})"
 #'
-#' @example convert_countsel("count-selected(${livelihoods})")
+#' @examples convert_countsel("count-selected(${livelihoods})")
 #'
 #' @importFrom stringr str_count
 convert_countsel <- function(string) {
@@ -78,6 +78,6 @@ convert_relevant <- function(string) {
    string <- str_replace_all(string, "selected\\((.*?)\\)", convert_selected)
    string <- str_replace_all(string, c("and" = "&", "or" = "|", "not" = "!", "=" = "=="))
    string <- str_replace_all(string, "\\$\\{(.*?)\\}", var_extract)
-   string <- parse_expr(string)
-   return(string)
+   relevant_expr <- parse_expr(string)
+   return(relevant_expr)
 }

@@ -17,3 +17,7 @@ String value of the format var %in% 'val', which can be
 \description{
 `convert_selected` converts selected(var, val) into an equivalent R statement.
 }
+\examples{
+convert_selected("selected(${refugee_origin}, 'hoth')")
+
+}

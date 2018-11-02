@@ -18,3 +18,7 @@ String value of the variable, which can be parsed for use in filtering datasets.
 `convert_selected` extracts the variable from the XLS Form
   format of ${variable}.
 }
+\examples{
+var_extract("${supports_rebels}")
+
+}
