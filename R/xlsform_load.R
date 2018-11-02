@@ -38,12 +38,16 @@ read_xls_form <- function(filepath,
                         survey = read_excel(filepath, sheet = survey),
                         choices = read_excel(filepath, sheet = choices))
 
-   ## Creating list_name column for the survey sheet, for easy linkages to the choices sheet
+   ## Creating list_name column for the survey sheet, for easy linkages to the choices sheet.
+   ## First we create new column removing all of the "type" values for selects, and removing blanks.
+   ## Then we make the value empty for a row that DIDN'T have a select question. So all that is left
+   ## is a character vector containing the list_names for selects!
 
    object$survey$list_name <- str_remove_all(object$survey$type, "^.*(select_multiple|select multiple| |select_one|select one)")
    object$survey$list_name[!str_detect(object$survey$type, "^.*(select_multiple|select multiple|select_one|select one)")] <- ""
 
-   ## Function for converting columns to the proper type within the data sheet of the kobold object
+   ## Function for converting columns to the proper type within the data sheet of the kobold object.
+   ## Uses R's scoping assignment to change the kobold variable in the broader function environment.
    convert_columns <- function(types, converter) {
       retype_names <- c(subset(object$survey, str_detect(type, types))$name)
       retype_cols <- unique(retype_names[retype_names %in% names(object$data)])
@@ -56,7 +60,11 @@ read_xls_form <- function(filepath,
    convert_columns(c("decimal", "integer", "range"), as.numeric)
    convert_columns(c("start", "end", "today", "date", "time", "dateTime"), as_datetime)
 
-   ## Function to convert columns of select_multiple individual options to logical vectors
+   ## Function to convert columns of select_multiple individual options to logical vectors.
+   ## Uses the same scoping as the previous function. Have to convert select_multiple functions
+   ## first to numeric vectors (since they often arrive as "0" "1" character vectors) and then
+   ## convert to logical vectors. Most of the code here is spent trying to locate the columns
+   ## corresponding to the possible choices.
    convert_select_multiple <- function() {
       retype_lists <- c(subset(object$survey, str_detect(type, "^.*(select_multiple|select multiple)"))$list_name)
       retype_lists <- paste0("^.*(", paste(retype_lists, collapse = "|"), ")s")
@@ -68,8 +76,7 @@ read_xls_form <- function(filepath,
       retype_names <- paste0("^(", paste(retype_names, collapse = "|"), ")")
 
       retype_cols <- unique(names(object$data %>%
-                                     select(matches(retype_names)) %>%
-                                     select(matches(retype_choice_names))))
+                                     select(matches(retype_names), matches(retype_choice_names), -one_of(c(object$survey$name)))))
       suppressWarnings(suppressMessages(
          object$data[retype_cols] <<- mutate_all(object$data[retype_cols], function(x) as.logical(as.numeric(x)))
       ))
@@ -77,6 +84,6 @@ read_xls_form <- function(filepath,
 
    convert_select_multiple()
 
-   ## And return the list!
+   ## And return the kobold list!
    return(object)
 }
