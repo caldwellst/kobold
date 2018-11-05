@@ -17,8 +17,7 @@
 #'
 #' @importFrom readxl excel_sheets read_excel
 #' @importFrom stringr str_remove_all str_detect str_match
-#' @importFrom dplyr mutate_all select
-#' @importFrom tidyselect matches
+#' @importFrom dplyr mutate_all select matches one_of mutate_at vars filter
 #' @importFrom lubridate as_datetime
 #' @importFrom magrittr %>%
 #'
@@ -49,10 +48,11 @@ read_xls_form <- function(filepath,
    ## Function for converting columns to the proper type within the data sheet of the kobold object.
    ## Uses R's scoping assignment to change the kobold variable in the broader function environment.
    convert_columns <- function(types, converter) {
-      retype_names <- c(subset(object$survey, str_detect(type, types))$name)
+      retype_types <- paste0("^(?!.*select).*(", paste(types, collapse = "|"),").*")
+      retype_names <- c(filter(object$survey, str_detect(type, retype_types))$name)
       retype_cols <- unique(retype_names[retype_names %in% names(object$data)])
       suppressWarnings(suppressMessages(
-         object$data[retype_cols] <<- mutate_all(object$data[retype_cols], converter)
+         object$data <<- object$data %>% mutate_at(vars(one_of(retype_cols)), converter)
       ))
    }
 
@@ -76,7 +76,9 @@ read_xls_form <- function(filepath,
       retype_names <- paste0("^(", paste(retype_names, collapse = "|"), ")")
 
       retype_cols <- unique(names(object$data %>%
-                                     select(matches(retype_names), matches(retype_choice_names), -one_of(c(object$survey$name)))))
+                                     select(matches(retype_names)) %>%
+                                     select(matches(retype_choice_names)) %>%
+                                     select(-one_of(c(object$survey$name)))))
       suppressWarnings(suppressMessages(
          object$data[retype_cols] <<- mutate_all(object$data[retype_cols], function(x) as.logical(as.numeric(x)))
       ))

@@ -17,7 +17,7 @@ kobold_cleaner <- function(kobold_file) {
    }
 
    ## Function to change value in a columns row(s) based on name of the cell, new value to place, and UUID or relevant logic.
-   change_value <- function(name, value, uuid, relevant) {
+   change_response <- function(name, value, uuid, relevant) {
       if(!is.na(uuid)) {
          print("I'm cleaning by UUID!")
          kobold_file$data <<- mutate(kobold_file$data, !!name := ifelse(X_uuid == uuid, value,!! sym(name)))
@@ -35,10 +35,12 @@ kobold_cleaner <- function(kobold_file) {
       }
    }
 
+   remove_value <- function()
+
    ## General cleaning function to call the different components
    general_cleaner <- function(type, name, value, uuid, relevant) {
-      if(type == "change_value") {
-         change_value(name, value, uuid, relevant)
+      if(type == "change_response") {
+         change_response(name, value, uuid, relevant)
          print("I'm changing values!")
       }
       else if(type == "remove_survey") {
