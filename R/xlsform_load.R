@@ -66,13 +66,13 @@ read_xls_form <- function(filepath,
    ## convert to logical vectors. Most of the code here is spent trying to locate the columns
    ## corresponding to the possible choices.
    convert_select_multiple <- function() {
-      retype_lists <- c(subset(object$survey, str_detect(type, "^.*(select_multiple|select multiple)"))$list_name)
+      retype_lists <- c(filter(object$survey, str_detect(type, "^.*(select_multiple|select multiple)"))$list_name)
       retype_lists <- paste0("^.*(", paste(retype_lists, collapse = "|"), ")s")
 
-      retype_choice_names <- c(subset(object$choices, str_detect(list_name, retype_lists))$name)
+      retype_choice_names <- c(filter(object$choices, str_detect(list_name, retype_lists))$name)
       retype_choice_names <- paste0("(", paste(retype_choice_names, collapse = "|"), ")$")
 
-      retype_names <- c(subset(object$survey, str_detect(type, "^.*(select_multiple|select multiple)"))$name)
+      retype_names <- c(filter(object$survey, str_detect(type, "^.*(select_multiple|select multiple)"))$name)
       retype_names <- paste0("^(", paste(retype_names, collapse = "|"), ")")
 
       retype_cols <- unique(names(object$data %>%

@@ -13,5 +13,7 @@ Imports:
    readxl,
    rlang, 
    stringr,
-   dplyr
+   dplyr,
+   glue,
+   purrr
 RoxygenNote: 6.1.0
