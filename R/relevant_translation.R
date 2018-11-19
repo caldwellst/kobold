@@ -61,8 +61,8 @@ convert_countsel <- function(string) {
 #' @title Interpret relevant logic from XLS Form
 #' @description \code{convert_relevant} converts relevant relevant logic from XLS Form into an R language equivalent.
 #'
-#' @details Takes in a string of relevant logic from XLS Form and converts all portions of it into returns a parsed expression that
-#'   can be passed to \code{dplyr::filter} and used to filter data frames.
+#' @details Takes in a string of relevant logic from XLS Form and converts all portions of it into a parsed expression that
+#'   can be passed to \code{dplyr::filter} for use in filtering data frames.
 #'
 #' @param string String to be interpreted, should be of the standard format for relevant logic within XLS Forms.
 #'

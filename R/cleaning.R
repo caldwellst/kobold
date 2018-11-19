@@ -25,7 +25,6 @@ kobold_cleaner <- function(kobold_file) {
       }
 
       else if(!is.na(relevant)){
-         print(convert_relevant(relevant))
          kobold_file$data <<- mutate(kobold_file$data, !!name := ifelse(!! convert_relevant(relevant), value,!! sym(name)))
       }
 
@@ -34,6 +33,7 @@ kobold_cleaner <- function(kobold_file) {
          kobold_file$data <<- mutate(kobold_file$data, !!name := value)
       }
    }
+
    ## Removes singular value from a response. For non-select_multiple questions, just instead run
    ## change_response, since there is no need to deal with multiple response options.
    remove_option <- function(q_name, value, uuid, relevant) {
@@ -46,12 +46,22 @@ kobold_cleaner <- function(kobold_file) {
       if(!str_detect(c(filter(kobold_file$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
          change_response(q_name, value, uuid, relevant)
       }
-      else if(!is.na(uuid)) {
-         kobold_file$data <<- mutate(kobold_file$data, !!q_name := ifelse(X_uuid == uuid, select_mul_str_removal(!!sym(q_name), value), !!sym(q_name)))
+
+      else { ## Here we get the name of the select_multiple binary column to change the value for
+         binary_name <- unique(names(kobold_file$data %>%
+                                   select(matches(paste0("(\\b", q_name, ")(.)(", value, "\\b)")))))
       }
 
-      else if(!is.na(relevant)) {
-         kobold_file$data <<- mutate(kobold_file$data, !!q_name := ifelse(!! convert_relevant(relevant), select_mul_str_removal(!!sym(q_name), value), !!sym(q_name)))
+      if(!is.na(uuid)) { ## making the changes if based on UUID
+         kobold_file$data <<- mutate(kobold_file$data,
+                                     !!q_name := ifelse(X_uuid == uuid, select_mul_str_removal(!!sym(q_name), value), !!sym(q_name)),
+                                     !!binary_name := ifelse(X_uuid == uuid, FALSE, !!sym(binary_name)))
+      }
+
+      else if(!is.na(relevant)) { ## making the changes if based on relevant logic
+         kobold_file$data <<- mutate(kobold_file$data,
+                                     !!q_name := ifelse(!! convert_relevant(relevant), select_mul_str_removal(!!sym(q_name), value), !!sym(q_name)),
+                                     !!binary_name := ifelse(!! convert_relevant(relevant), FALSE, !!sym(binary_name)))
       }
    }
 
