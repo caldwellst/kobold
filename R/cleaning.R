@@ -20,16 +20,12 @@ kobold_cleaner <- function(kobold_file) {
 
    ## Function to change value in a columns row(s) based on name of the cell, new value to place, and UUID or relevant logic.
    change_response <- function(name, value, uuid, relevant) {
-      if(str_detect(c(filter(kobold_file$survey, name == name)$type), "^.*(select_multiple|select multiple)")) {
-         warning(glue("Since {name} is a select_multiple question, change_response will change the entire response to {value}
-                      \nTo only remove a single response option or add a single response option from a select_multiple response
-                      \nuse remove_option and add_option respectively"))
-      }
       if(!is.na(uuid)) {
          kobold_file$data <<- mutate(kobold_file$data, !!name := ifelse(X_uuid == uuid, value,!! sym(name)))
       }
 
       else if(!is.na(relevant)){
+         print(convert_relevant(relevant))
          kobold_file$data <<- mutate(kobold_file$data, !!name := ifelse(!! convert_relevant(relevant), value,!! sym(name)))
       }
 
@@ -40,16 +36,22 @@ kobold_cleaner <- function(kobold_file) {
    }
    ## Removes singular value from a response. For non-select_multiple questions, just instead run
    ## change_response, since there is no need to deal with multiple response options.
-   remove_option <- function(name, value, uuid, relevant) {
-      if(!str_detect(c(filter(kobold_file$survey, name == name)$type), "^.*(select_multiple|select multiple)")) {
-         change_response(name, value, uuid, relevant)
+   remove_option <- function(q_name, value, uuid, relevant) {
+      # if(str_detect(c(filter(kobold_file$survey, name == name)$type), "^.*(select_multiple|select multiple)")) {
+      #    warning(glue("Since {name} is a select_multiple question, change_response will change the entire response to {value}
+      #                 \nTo only remove a single response option or add a single response option from a select_multiple response
+      #                 \nuse remove_option and add_option respectively"))
+      # }
+
+      if(!str_detect(c(filter(kobold_file$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
+         change_response(q_name, value, uuid, relevant)
       }
       else if(!is.na(uuid)) {
-         kobold_file$data <<- mutate(kobold_file$data, !!name := ifelse(X_uuid == uuid, select_mul_str_removal(!!sym(name), value), !!sym(name)))
+         kobold_file$data <<- mutate(kobold_file$data, !!q_name := ifelse(X_uuid == uuid, select_mul_str_removal(!!sym(q_name), value), !!sym(q_name)))
       }
 
       else if(!is.na(relevant)) {
-         kobold_file$data <<- mutate(kobold_file$data, !!name := ifelse(!! convert_relevant(relevant), select_mul_str_removal(!!sym(name), value), !!sym(name)))
+         kobold_file$data <<- mutate(kobold_file$data, !!q_name := ifelse(!! convert_relevant(relevant), select_mul_str_removal(!!sym(q_name), value), !!sym(q_name)))
       }
    }
 
@@ -62,7 +64,7 @@ kobold_cleaner <- function(kobold_file) {
          remove_survey(uuid = uuid, relevant = relevant)
       }
       else if(type == "remove_option") {
-         remove_option(name = name, value = value, uuid = uuid, relevant = relevant)
+         remove_option(q_name = name, value = value, uuid = uuid, relevant = relevant)
       }
 
       else {
@@ -79,7 +81,10 @@ kobold_cleaner <- function(kobold_file) {
    return(kobold_file)
 }
 
-## Select multiple string removal function
+## Removes select_multiple value for cleaning
+#' @importFrom glue glue
+#' @importFrom stringr str_trim str_replace str_remove
+
 select_mul_str_removal <- function(string, option) {
    option = glue("\\b{option}\\b")
    str_trim(str_replace(str_remove(string, option), "  ", " "))

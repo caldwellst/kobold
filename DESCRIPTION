@@ -9,7 +9,7 @@ Depends: R (>= 3.4.4)
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-Imports: 
+Imports:
    readxl,
    rlang, 
    stringr,
@@ -17,3 +17,4 @@ Imports:
    glue,
    purrr
 RoxygenNote: 6.1.0
+Suggests: testthat

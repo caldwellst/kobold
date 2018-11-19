@@ -19,7 +19,7 @@
 convert_selected <- function(string) {
    var <- var_extract(string)
    answer <- str_match(string, "(?:\'|\")(.*)(?:\'|\")")[2]
-   paste0(var, " %in% '", answer, "'")
+   paste0("grepl('\\\\b", answer, "\\\\b',", var,")")
 }
 
 #' @title Extract variable names from XLS Form
