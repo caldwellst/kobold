@@ -53,7 +53,6 @@ kobold_cleaner <- function(kobold_file) {
          binary_name <- unique(names(kobold_file$data %>%
                                    select(matches(paste0("(\\b", q_name, ")(.)(", value, "\\b)")),
                                           -one_of(c(kobold_file$survey$name)))))
-         print(binary_name)
       }
 
       if(!is.na(uuid)) { ## making the changes if based on UUID
@@ -79,18 +78,17 @@ kobold_cleaner <- function(kobold_file) {
                                      select(matches(paste0("(\\b", q_name, ")(.)(", value, "\\b)")))))
          l_name <- str_trim(str_extract(filter(kobold_file$survey, name == q_name)$type, "(?<=select_multiple).*$"))
          choices <- filter(kobold_file$choices, list_name == l_name)$name
-         choice_loc <- match(value, choices)
-         }
+      }
 
       if(!is.na(uuid)) {
          kobold_file$data <<- mutate(kobold_file$data,
-                                     !!q_name := ifelse(X_uuid == uuid, select_mul_str_adder(value, !!sym(q_name), choices, choice_loc), !!sym(q_name)),
+                                     !!q_name := ifelse(X_uuid == uuid, select_mul_str_adder(value, !!sym(q_name), choices), !!sym(q_name)),
                                      !!binary_name := ifelse(X_uuid == uuid, TRUE, !!sym(binary_name)))
       }
 
       else if(!is.na(relevant)) {
          kobold_file$data <<- mutate(kobold_file$data,
-                                     !!q_name := ifelse(!! convert_xls_code(relevant), select_mul_str_adder(value, !!sym(q_name), choices, choice_loc), !!sym(q_name)),
+                                     !!q_name := ifelse(!! convert_xls_code(relevant), select_mul_str_adder(value, !!sym(q_name), choices), !!sym(q_name)),
                                      !!binary_name := ifelse(!! convert_xls_code(relevant), TRUE, !!sym(binary_name)))
       }
    }
@@ -122,6 +120,7 @@ kobold_cleaner <- function(kobold_file) {
              kobold_file$cleaning$uuid,
              kobold_file$cleaning$relevant),
         general_cleaner)
+
    return(kobold_file)
 }
 
@@ -133,15 +132,14 @@ select_mul_str_removal <- function(value, column) {
    str_trim(str_replace(str_remove(option, column), "  ", " "))
 }
 
-## Adds select_multiple value for cleaning\
+## Adds select_multiple value for cleaning
 #' @importFrom glue glue
 #' @importFrom stringr str_split
 #' @importFrom purrr map
-select_mul_str_adder <- function(value, column, choices, choice_loc) {
+select_mul_str_adder <- function(value, column, choices) {
    split <- str_split(column, pattern = " ")
-   indices <- map(split, match, choices)
-   insert_index <- map(indices, function(x) which(order(c(choice_loc, x)) == 1))
-   exist_test <- map_lgl(indices, function(x) is.na(match(choice_loc, x)))
-   split <- ifelse(exist_test, map(split, function(x) append(x, value, after = choice_loc - 1)), split)
+   exist_test <- map_lgl(split, function(x) is.na(match(value, x)))
+   split <- ifelse(exist_test, map(split, append, value), split)
+   split <- map(split, function(x) x[order(match(x, choices))])
    map_chr(split, str_c, collapse = " ")
 }
