@@ -18,17 +18,17 @@ new_kobold <- function(data, cleaning, survey, choices) {
 
 ## Defining generics for kobold class objects
 
-## data.frame generic for kobold
+## as.data.frame generic for kobold
 #' @export
-data.frame.kobold <- function(df) {
-   data.frame(df$data)
+as.data.frame.kobold <- function(df) {
+   as.data.frame(df[["data"]])
 }
 
 ## as_tibble generic for kobold
 #' @importFrom tibble as_tibble
 #' @export
 as_tibble.kobold <- function(df) {
-   as_tibble(df$data)
+   df[["data"]]
 }
 
 
