@@ -74,7 +74,7 @@ convert_countsel <- function(string) {
 #' convert_relevant("selected(${employed_by_empire}, 'yes') and count-selected(${livelihoods_coping}) > 3")
 #'
 #' @export
-convert_relevant <- function(string) {
+convert_xls_code <- function(string) {
    string <- str_replace_all(string, "count-selected\\((.*?)\\)", convert_countsel)
    string <- str_replace_all(string, "selected\\((.*?)\\)", convert_selected)
    string <- str_replace_all(string, c("\\band\\b" = "&", "\\bor\\b" = "|", "\\bnot\\b" = "!", "=" = "=="))

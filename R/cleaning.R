@@ -15,7 +15,7 @@ kobold_cleaner <- function(kobold_file) {
       }
       else{
          stopifnot(!is.na(relevant))
-         kobold_file$data <<- filter(kobold_file$data, !(!! convert_relevant(relevant)))
+         kobold_file$data <<- filter(kobold_file$data, !(!! convert_xls_code(relevant)))
       }
    }
 
@@ -26,7 +26,7 @@ kobold_cleaner <- function(kobold_file) {
       }
 
       else if(!is.na(relevant)){
-         kobold_file$data <<- mutate(kobold_file$data, !!name := ifelse(!! convert_relevant(relevant), value,!! sym(name)))
+         kobold_file$data <<- mutate(kobold_file$data, !!name := ifelse(!! convert_xls_code(relevant), value,!! sym(name)))
       }
 
       else {
@@ -64,8 +64,8 @@ kobold_cleaner <- function(kobold_file) {
 
       else if(!is.na(relevant)) { ## making the changes if based on relevant logic
          kobold_file$data <<- mutate(kobold_file$data,
-                                     !!q_name := ifelse(!! convert_relevant(relevant), select_mul_str_removal(value, !!sym(q_name)), !!sym(q_name)),
-                                     !!binary_name := ifelse(!! convert_relevant(relevant), FALSE, !!sym(binary_name)))
+                                     !!q_name := ifelse(!! convert_xls_code(relevant), select_mul_str_removal(value, !!sym(q_name)), !!sym(q_name)),
+                                     !!binary_name := ifelse(!! convert_xls_code(relevant), FALSE, !!sym(binary_name)))
       }
    }
 
@@ -90,8 +90,8 @@ kobold_cleaner <- function(kobold_file) {
 
       else if(!is.na(relevant)) {
          kobold_file$data <<- mutate(kobold_file$data,
-                                     !!q_name := ifelse(!! convert_relevant(relevant), select_mul_str_adder(value, !!sym(q_name), choices, choice_loc), !!sym(q_name)),
-                                     !!binary_name := ifelse(!! convert_relevant(relevant), TRUE, !!sym(binary_name)))
+                                     !!q_name := ifelse(!! convert_xls_code(relevant), select_mul_str_adder(value, !!sym(q_name), choices, choice_loc), !!sym(q_name)),
+                                     !!binary_name := ifelse(!! convert_xls_code(relevant), TRUE, !!sym(binary_name)))
       }
    }
 
