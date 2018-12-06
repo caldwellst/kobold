@@ -10,22 +10,22 @@ kobold_cleaner <- function(kobold_file) {
 
    ## Function to remove surveys based on either a UUID or relevant logic
    remove_survey <- function(uuid, relevant) {
-      if(!is.na(uuid)) {
+      if(uuid != "") {
          kobold_file$data <<- filter(kobold_file$data, !(X_uuid == uuid))
       }
       else{
-         stopifnot(!is.na(relevant))
+         stopifnot(relevant != "")
          kobold_file$data <<- filter(kobold_file$data, !(!! convert_xls_code(relevant)))
       }
    }
 
    ## Function to change value in a columns row(s) based on name of the cell, new value to place, and UUID or relevant logic.
    change_response <- function(name, value, uuid, relevant) {
-      if(!is.na(uuid)) {
+      if(uuid != "") {
          kobold_file$data <<- mutate(kobold_file$data, !!name := ifelse(X_uuid == uuid, value,!! sym(name)))
       }
 
-      else if(!is.na(relevant)){
+      else if(relevant != ""){
          kobold_file$data <<- mutate(kobold_file$data, !!name := ifelse(!! convert_xls_code(relevant), value,!! sym(name)))
       }
 
@@ -56,13 +56,13 @@ kobold_cleaner <- function(kobold_file) {
          print(binary_name)
       }
 
-      if(!is.na(uuid)) { ## making the changes if based on UUID
+      if(uuid != "") { ## making the changes if based on UUID
          kobold_file$data <<- mutate(kobold_file$data,
                                      !!q_name := ifelse(X_uuid == uuid, select_mul_str_removal(value, !!sym(q_name)), !!sym(q_name)),
                                      !!binary_name := ifelse(X_uuid == uuid, FALSE, !!sym(binary_name)))
       }
 
-      else if(!is.na(relevant)) { ## making the changes if based on relevant logic
+      else if(relevant != "") { ## making the changes if based on relevant logic
          kobold_file$data <<- mutate(kobold_file$data,
                                      !!q_name := ifelse(!! convert_xls_code(relevant), select_mul_str_removal(value, !!sym(q_name)), !!sym(q_name)),
                                      !!binary_name := ifelse(!! convert_xls_code(relevant), FALSE, !!sym(binary_name)))
@@ -82,13 +82,13 @@ kobold_cleaner <- function(kobold_file) {
          choice_loc <- match(value, choices)
          }
 
-      if(!is.na(uuid)) {
+      if(uuid != "") {
          kobold_file$data <<- mutate(kobold_file$data,
                                      !!q_name := ifelse(X_uuid == uuid, select_mul_str_adder(value, !!sym(q_name), choices, choice_loc), !!sym(q_name)),
                                      !!binary_name := ifelse(X_uuid == uuid, TRUE, !!sym(binary_name)))
       }
 
-      else if(!is.na(relevant)) {
+      else if(relevant != "") {
          kobold_file$data <<- mutate(kobold_file$data,
                                      !!q_name := ifelse(!! convert_xls_code(relevant), select_mul_str_adder(value, !!sym(q_name), choices, choice_loc), !!sym(q_name)),
                                      !!binary_name := ifelse(!! convert_xls_code(relevant), TRUE, !!sym(binary_name)))

@@ -32,10 +32,10 @@ read_xls_form <- function(filepath,
    worksheets <- worksheets[worksheets %in% c(choices, survey, data, cleaning)]
 
    ## Loading the Excel sheets into a new class so we can make all names of the list objects the same
-   object <- new_kobold(data = read_excel(filepath, sheet = data, col_types = "text"),
-                        cleaning = read_excel(filepath, sheet = cleaning),
-                        survey = read_excel(filepath, sheet = survey),
-                        choices = read_excel(filepath, sheet = choices))
+   object <- new_kobold(data = read_excel(filepath, sheet = data, col_types = "text", na = NA),
+                        cleaning = read_excel(filepath, sheet = cleaning, na = NA),
+                        survey = read_excel(filepath, sheet = survey, na = NA),
+                        choices = read_excel(filepath, sheet = choices, na = NA))
 
    ## Creating list_name column for the survey sheet, for easy linkages to the choices sheet.
    ## First we create new column removing all of the "type" values for selects, and removing blanks.
