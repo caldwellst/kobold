@@ -25,7 +25,7 @@ data.frame.kobold <- function(df) {
 }
 
 ## as_tibble generic for kobold
-#' importFrom tibble as_tibble
+#' @importFrom tibble as_tibble
 #' @export
 as_tibble.kobold <- function(df) {
    as_tibble(df$data)

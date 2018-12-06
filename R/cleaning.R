@@ -133,7 +133,7 @@ select_mul_str_removal <- function(value, column) {
    str_trim(str_replace(str_remove(option, column), "  ", " "))
 }
 
-## Adds select_multiple value for cleaning
+## Adds select_multiple value for cleaning\
 #' @importFrom glue glue
 #' @importFrom stringr str_split
 #' @importFrom purrr map
