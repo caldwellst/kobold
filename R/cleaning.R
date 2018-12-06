@@ -129,7 +129,7 @@ kobold_cleaner <- function(kobold_file) {
 #' @importFrom stringr str_trim str_replace str_remove
 select_mul_str_removal <- function(value, column) {
    option = glue("\\b{value}\\b")
-   str_trim(str_replace(str_remove(option, column), "  ", " "))
+   str_trim(str_replace(str_remove(column, option), "  ", " "))
 }
 
 ## Adds select_multiple value for cleaning
