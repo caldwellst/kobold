@@ -3,9 +3,8 @@
 #' @importFrom dplyr mutate filter
 #' @importFrom rlang sym
 #' @importFrom glue glue
-#' @importFrom purrr pmap map detect_index
-#' @importFrom stringr str_remove str_trim str_replace
-#' @importFrom R.utils insert
+#' @importFrom purrr pmap map map_chr map_lgl
+#' @importFrom stringr str_remove str_trim str_replace str_c
 kobold_cleaner <- function(kobold_file) {
 
    ## Function to remove surveys based on either a UUID or relevant logic
@@ -38,12 +37,6 @@ kobold_cleaner <- function(kobold_file) {
    ## Removes singular value from a response. For non-select_multiple questions, just instead run
    ## change_response, since there is no need to deal with multiple response options.
    remove_option <- function(q_name, value, uuid, relevant) {
-      # if(str_detect(c(filter(kobold_file$survey, name == name)$type), "^.*(select_multiple|select multiple)")) {
-      #    warning(glue("Since {name} is a select_multiple question, change_response will change the entire response to {value}
-      #                 \nTo only remove a single response option or add a single response option from a select_multiple response
-      #                 \nuse remove_option and add_option respectively"))
-      # }
-
       if(!str_detect(c(filter(kobold_file$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
          change_response(q_name, value, uuid, relevant)
          warning(glue("remove_option is removing the entire response {value} since {q_name} is a select_one question"))
@@ -76,7 +69,7 @@ kobold_cleaner <- function(kobold_file) {
       else { ## Generating the name of the binary column and also the order in which it should be inserted
          binary_name <- unique(names(kobold_file$data %>%
                                      select(matches(paste0("(\\b", q_name, ")(.)(", value, "\\b)")))))
-         l_name <- str_trim(str_extract(filter(kobold_file$survey, name == q_name)$type, "(?<=select_multiple).*$"))
+         l_name <- filter(kobold_file$survey, name == q_name)$list_name
          choices <- filter(kobold_file$choices, list_name == l_name)$name
       }
 

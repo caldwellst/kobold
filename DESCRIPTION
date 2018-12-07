@@ -3,8 +3,8 @@ Type: Package
 Title: Easy data cleaning for XLSForm surveys
 Version: 0.0.0.9000
 Authors@R: person("Seth", "Caldwell", email = "caldwellst@gmail.com", role = c("aut", "cre"))
-Description: This package provides a framework for cleaning of survey datasets, particularly through the use
-   of an Excel file in the vein of XLSForm.
+Description: This package provides a framework for cleaning of survey datasets through the use of XLS coding
+   in the vein of XLSForm.
 Depends: R (>= 3.4.4)
 License: GPL-3
 Encoding: UTF-8
