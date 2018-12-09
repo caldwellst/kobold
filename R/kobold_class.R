@@ -1,34 +1,40 @@
-## Constructor for a basic class, which is essentially a list with data frames for data, cleaning sheet, survey, and choices.
-#' @title Create a kobold list from an XLS Form
-#' @description This is a constructor of a kobold list using 4 components of an XLS Form survey, data outputs, and the kobold cleaning sheet.
+#' Create a kobold list from an XLS Form
 #'
-#' @param data Data frame containing exported data
-#' @param cleaning Data frame containing cleaning sheet
-#' @param survey Data frame containing XLS Form survey
-#' @param choices Data frame containing XLS Form choices
+#' @description Constructor of a kobold list using XLSForm survey and choices and other possible sheets:
+#' * Main data sheet
+#' * Loop data sheet(s), which do not need to be explicitly loaded
+#' * Cleaning sheet
+#'
+#' @param data Name of sheet containing data.
+#' @param cleaning Name of sheet containing cleaning code.
+#' @param survey Name of sheet containing XLSForm survey.
+#' @param choices Name of sheet containing XLSForm choices.
 new_kobold <- function(data, cleaning, survey, choices) {
-   object <- list(data = data,
-                  cleaning = cleaning,
-                  survey = survey,
-                  choices = choices)
+  object <- list(
+    data = data,
+    cleaning = cleaning,
+    survey = survey,
+    choices = choices
+  )
 
-   class(object) <- c("kobold", class(object))
-   return(object)
+  class(object) <- c("kobold", class(object))
+  return(object)
 }
 
-## Defining generics for kobold class objects
+# Defining generics for kobold class objects
 
-## as.data.frame generic for kobold
+#' as.data.frame generic for kobold
+#'
 #' @export
 as.data.frame.kobold <- function(df) {
-   as.data.frame(df[["data"]])
+  as.data.frame(df[["data"]])
 }
 
-## as_tibble generic for kobold
+#' as_tibble generic for kobold
+#'
 #' @importFrom tibble as_tibble
+#'
 #' @export
 as_tibble.kobold <- function(df) {
-   df[["data"]]
+  df[["data"]]
 }
-
-

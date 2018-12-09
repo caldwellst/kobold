@@ -26,7 +26,7 @@ Returns a \code{kobold} class object, a modified list containing the above data 
 }
 \details{
 This function loads XLS Form Excel files into R, while also allowing additional sheets for exported data and cleaning.
-It's loaded as an S3 class \code{kobold}, and can be worked with using functions within this package, or the data can
-be retrieved as a data frame or tibble using generics. The columns of the data are given a class according to the
-survey and choices sheet.
+  It's loaded as an S3 class \code{kobold}, and can be worked with using functions within this package, or the data can
+  be retrieved as a data frame or tibble using generics. The columns of the data are given a class according to the
+  survey and choices sheet.
 }
