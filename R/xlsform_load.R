@@ -48,7 +48,6 @@ read_xls_form <- function(filepath,
   rep_sheets <- worksheets[worksheets %in% rep_groups]
   rep_missing <- rep_groups[!(rep_groups %in% worksheets)]
 
-  # Warning for missing repeat groups
   if(length(rep_missing) > 0) {
     rep_missing <- glue_collapse(rep_missing, sep = ", ")
     warning(
@@ -100,41 +99,40 @@ read_xls_form <- function(filepath,
   # convert to logical vectors. Most of the code here is spent trying to locate the columns
   # corresponding to the possible choices.
   convert_select_multiple <- function() {
-    retype_lists <-
-      c(filter(
-        object$survey,
+    sel_mul_reg <- "^.*(select_multiple|select multiple)"
+    list_rows <- filter(object$survey, str_detect(type, sel_mul_reg))
+    lists <- list_rows$list_name
+    lists <- str_c(lists, collapse = "|")
+    lists_reg <- glue("^.*({lists})s")
 
-        str_detect(type, "^.*(select_multiple|select multiple)")
-      )$list_name)
-    retype_lists <-
-      paste0("^.*(", str_c(retype_lists, collapse = "|"), ")s")
+    choice_rows <- filter(object$choices, str_detect(list_name, lists_reg))
+    choices <- choice_rows$name
+    choices <- str_c(choices, collapse = "|")
+    choices_reg <- str_c("(", choices, ")$")
 
-    retype_choice_names <-
-      c(filter(object$choices, str_detect(list_name, retype_lists))$name)
-    retype_choice_names <-
-      str_c("(", str_c(retype_choice_names, collapse = "|"), ")$")
+    name_rows <- filter(object$survey, str_detect(type, sel_mul_reg))
+    names <- name_rows$name
+    names <- str_c(names, collapse = "|")
+    names_reg <- str_c("^(", names, ")")
 
-    retype_names <-
-      c(filter(
-        object$survey,
-        str_detect(type, "^.*(select_multiple|select multiple)")
-      )$name)
-    retype_names <-
-      str_c("^(", str_c(retype_names, collapse = "|"), ")")
+    survey_names <- object$survey$name
 
-    retype_cols <- unique(names(
-      object$data %>%
-        select(matches(retype_names)) %>%
-        select(matches(retype_choice_names)) %>%
-        select(-one_of(c(
-          object$survey$name
-        )))
-    ))
     suppressWarnings(suppressMessages(
-      object$data[retype_cols] <<-
-        mutate_all(object$data[retype_cols], function(x)
-          as.logical(as.numeric(x)))
+      retype_cols <- object$data %>%
+        select(-one_of(survey_names)) %>%
+        select(matches(names_reg)) %>%
+        select(matches(choices_reg))
     ))
+
+    retype_names <- unique(names(retype_cols))
+
+    log_num <- function(x) {
+      as.logical(as.numeric(x))
+    }
+
+    object$data[retype_names] <<-
+      mutate_all(object$data[retype_names], log_num)
+
   }
   # Converting the columns for each type
   convert_columns(c("decimal", "integer", "range"), as.numeric)
