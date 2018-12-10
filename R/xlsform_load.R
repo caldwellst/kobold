@@ -42,8 +42,11 @@ read_xls_form <- function(filepath,
   )
 
   # Load in repeat group data (if available)
-  rep_groups <- filter(object$survey,
-                       str_detect(type, "^.*(begin_repeat|begin repeat)"))$name
+
+  rep_reg <- "^.*(begin_repeat|begin repeat)"
+  rep_rows <- filter(object$survey,
+                       str_detect(type, rep_reg))
+  rep_groups <- rep_rows$name
 
   rep_sheets <- worksheets[worksheets %in% rep_groups]
   rep_missing <- rep_groups[!(rep_groups %in% worksheets)]
@@ -51,7 +54,7 @@ read_xls_form <- function(filepath,
   if(length(rep_missing) > 0) {
     rep_missing <- glue_collapse(rep_missing, sep = ", ")
     warning(
-      glue("Repeat worksheets {rep_missing} were not found.")
+      glue("Repeat group worksheets {rep_missing} were not found.")
     )
   }
 
@@ -64,6 +67,9 @@ read_xls_form <- function(filepath,
   }
 
   map(rep_sheets, load_sheet)
+
+  # Isolating sheet names with data to be cleaned/worked with
+  data_sheets <- c("data", rep_sheets)
 
   # Creating list_name column for the survey sheet, for easy linkages to the choices sheet.
   # First we create new column removing all of the "type" values for selects, and removing blanks.
@@ -79,17 +85,18 @@ read_xls_form <- function(filepath,
 
   # Function for converting columns to the proper type within the data sheet of the kobold object.
   # Uses R's scoping assignment to change the kobold variable in the broader function environment.
-  convert_columns <- function(types, converter) {
-    retype_types <- str_c(
-      "^(?!.*select).*(",
-      str_c(types, collapse = "|"),
-      ").*")
-    retype_names <- c(filter(object$survey, str_detect(type, retype_types))$name)
-    retype_cols <-
-      unique(retype_names[retype_names %in% names(object$data)])
-    suppressWarnings(suppressMessages(object$data <<-
-                                        object$data %>% mutate_at(vars(
-                                          one_of(retype_cols)
+  convert_columns <- function(sheet, types, converter) {
+    types <- str_c(types, collapse = "|")
+    types <- str_c("^(?!.*select).*(", types, ").*")
+
+    name_rows <- filter(object$survey,
+                    str_detect(type, types))
+    cnv_names <- name_rows$name
+    sht_names <- names(object[[sheet]])
+    cols <- unique(cnv_names[cnv_names %in% sht_names])
+    suppressWarnings(suppressMessages(object[[sheet]] <<-
+                                        object[[sheet]] %>% mutate_at(vars(
+                                          one_of(cols)
                                         ), converter)))
   }
 
@@ -98,7 +105,7 @@ read_xls_form <- function(filepath,
   # first to numeric vectors (since they often arrive as "0" "1" character vectors) and then
   # convert to logical vectors. Most of the code here is spent trying to locate the columns
   # corresponding to the possible choices.
-  convert_select_multiple <- function() {
+  convert_select_multiple <- function(sheet) {
     sel_mul_reg <- "^.*(select_multiple|select multiple)"
     list_rows <- filter(object$survey, str_detect(type, sel_mul_reg))
     lists <- list_rows$list_name
@@ -118,7 +125,7 @@ read_xls_form <- function(filepath,
     survey_names <- object$survey$name
 
     suppressWarnings(suppressMessages(
-      retype_cols <- object$data %>%
+      retype_cols <- object[[sheet]] %>%
         select(-one_of(survey_names)) %>%
         select(matches(names_reg)) %>%
         select(matches(choices_reg))
@@ -130,15 +137,24 @@ read_xls_form <- function(filepath,
       as.logical(as.numeric(x))
     }
 
-    object$data[retype_names] <<-
-      mutate_all(object$data[retype_names], log_num)
+    object[[sheet]][retype_names] <<-
+      mutate_all(object[[sheet]][retype_names], log_num)
 
   }
-  # Converting the columns for each type
-  convert_columns(c("decimal", "integer", "range"), as.numeric)
-  convert_columns(c("start", "end", "today", "date", "time", "dateTime"),
-                  as_datetime)
 
-  convert_select_multiple()
+  # Converting the columns for each type
+  map(data_sheets,
+      convert_columns,
+      c("decimal", "integer", "range"),
+      as.numeric)
+
+  map(data_sheets,
+      convert_columns,
+      c("start", "end", "today", "date", "time", "dateTime"),
+      as_datetime)
+
+  map(data_sheets,
+      convert_select_multiple)
+
   return(object)
 }
