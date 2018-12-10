@@ -22,6 +22,7 @@
 #' @importFrom magrittr %>%
 #' @importFrom purrr map
 #' @importFrom tidyr replace_na
+#' @importFrom glue glue_collapse glue
 #'
 #' @export
 read_xls_form <- function(filepath,
@@ -33,11 +34,11 @@ read_xls_form <- function(filepath,
   worksheets <- excel_sheets(filepath)
 
   # Loading the Excel sheets into a new class so we can make all names of the list objects the same
-  object <- new_kobold(
+  object <- suppressWarnings(suppressMessages(new_kobold(
     data = read_excel(filepath, data),
     cleaning = read_excel(filepath, cleaning),
     survey = read_excel(filepath, survey),
-    choices = read_excel(filepath, choices)
+    choices = read_excel(filepath, choices)))
   )
 
   # Load in repeat group data (if available)
@@ -45,11 +46,22 @@ read_xls_form <- function(filepath,
                        str_detect(type, "^.*(begin_repeat|begin repeat)"))$name
 
   rep_sheets <- worksheets[worksheets %in% rep_groups]
+  rep_missing <- rep_groups[!(rep_groups %in% worksheets)]
+
+  # Warning for missing repeat groups
+  if(length(rep_missing) > 0) {
+    rep_missing <- glue_collapse(rep_missing, sep = ", ")
+    warning(
+      glue("Repeat worksheets {rep_missing} were not found.")
+    )
+  }
 
   # Function to load in extra worksheets
 
   load_sheet <- function(sheet) {
-    object[[sheet]] <<- read_excel(filepath, sheet)
+    suppressWarnings(suppressMessages(
+      object[[sheet]] <<- read_excel(filepath, sheet)
+    ))
   }
 
   map(rep_sheets, load_sheet)
