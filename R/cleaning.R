@@ -2,18 +2,42 @@
 #' @importFrom rlang sym
 #' @importFrom glue glue
 #' @importFrom purrr pmap map map_chr map_lgl
-#' @importFrom stringr str_remove str_trim str_replace str_c
-kobold_cleaner <- function(kobold_file) {
+#' @importFrom stringr str_remove str_trim str_replace str_c str_detect
+kobold_cleaner <- function(object) {
+
+  # Identifying loop locations for questions
+  object$survey$group <- NA
+  begin_reg <- "^.*(begin_repeat|begin repeat)"
+  end_reg <- "^.*(end_repeat|end repeat)"
+  group <- "data"
+  i <- 1
+
+  while (i <= nrow(object$survey)) {
+    type <- object$survey$type[i]
+
+    if (str_detect(type, begin_reg)) {
+      group <- object$survey$name[i]
+    }
+
+    object$survey$group[i] <- group
+
+    if (str_detect(type, end_reg)) {
+      group <- "data"
+    }
+
+    i <- i + 1
+  }
+
   # Function to remove surveys based on either a UUID or relevant logic
 
   remove_survey <- function(uuid, relevant) {
     if (uuid != "") {
-      kobold_file$data <<- filter(kobold_file$data,!(X_uuid == uuid))
+      object$data <<- filter(object$data,!(X_uuid == uuid))
     }
     else {
       stopifnot(!is.na(relevant))
-      kobold_file$data <<-
-        filter(kobold_file$data,!(!!convert_xls_code(relevant)))
+      object$data <<-
+        filter(object$data, !(!!convert_xls_code(relevant)))
     }
   }
 
@@ -22,14 +46,14 @@ kobold_cleaner <- function(kobold_file) {
 
   change_response <- function(name, value, uuid, relevant) {
     if (!is.na(uuid)) {
-      kobold_file$data <<-
-        mutate(kobold_file$data,
+      object$data <<-
+        mutate(object$data,
                !!name := ifelse(X_uuid == uuid, value,!!sym(name)))
     }
 
     else if (!is.na(relevant)) {
-      kobold_file$data <<-
-        mutate(kobold_file$data,
+      object$data <<-
+        mutate(object$data,
                !!name := ifelse(!!convert_xls_code(relevant), value,!!sym(name)))
     }
 
@@ -39,8 +63,8 @@ kobold_cleaner <- function(kobold_file) {
           "Changing all values in {name} to {value} since no UUID or relevant logic provided"
         )
       )
-      kobold_file$data <<-
-        mutate(kobold_file$data,!!name := value)
+      object$data <<-
+        mutate(object$data,!!name := value)
     }
   }
 
@@ -49,7 +73,7 @@ kobold_cleaner <- function(kobold_file) {
   # change_response, since there is no need to deal with multiple response options.
 
   remove_option <- function(q_name, value, uuid, relevant) {
-    if (!str_detect(c(filter(kobold_file$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
+    if (!str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
       change_response(q_name, value, uuid, relevant)
       warning(
         glue(
@@ -60,18 +84,18 @@ kobold_cleaner <- function(kobold_file) {
 
     else {
       ## Here we get the name of the select_multiple binary column to change the value for
-      binary_name <- unique(names(kobold_file$data %>%
+      binary_name <- unique(names(object$data %>%
                                     select(matches(
                                       paste0("(\\b", q_name, ")(.)(", value, "\\b)")
                                     ),-one_of(
-                                      c(kobold_file$survey$name)
+                                      c(object$survey$name)
                                     ))))
     }
 
     if (!is.na(uuid)) {
       ## making the changes if based on UUID
-      kobold_file$data <<- mutate(
-        kobold_file$data,!!q_name := ifelse(
+      object$data <<- mutate(
+        object$data,!!q_name := ifelse(
           X_uuid == uuid,
           select_mul_str_removal(!!sym(q_name), value),!!sym(q_name)
         ),!!binary_name := ifelse(X_uuid == uuid,
@@ -81,8 +105,8 @@ kobold_cleaner <- function(kobold_file) {
 
     else if (!is.na(relevant)) {
       # making the changes if based on relevant logic
-      kobold_file$data <<- mutate(
-        kobold_file$data,!!q_name := ifelse(
+      object$data <<- mutate(
+        object$data,!!q_name := ifelse(
           !!convert_xls_code(relevant),
           select_mul_str_removal(!!sym(q_name), value),!!sym(q_name)
         ),!!binary_name := ifelse(
@@ -96,7 +120,7 @@ kobold_cleaner <- function(kobold_file) {
   # Add option function ------------------------------------------------------------------------------
 
   add_option <- function(q_name, value, uuid, relevant) {
-    if (!str_detect(c(filter(kobold_file$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
+    if (!str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
       stop(
         glue(
           "add_option failed to add {value} to {q_name} since it is not a select_multiple question"
@@ -105,19 +129,19 @@ kobold_cleaner <- function(kobold_file) {
     }
     # Generating the name of the binary column and choices list
     else {
-      binary_name <- unique(names(kobold_file$data %>%
+      binary_name <- unique(names(object$data %>%
                                     select(matches(
                                       paste0("(\\b", q_name, ")(.)(", value, "\\b)")
                                     ))))
       l_name <-
-        filter(kobold_file$survey, name == q_name)$list_name
+        filter(object$survey, name == q_name)$list_name
       choices <-
-        filter(kobold_file$choices, list_name == l_name)$name
+        filter(object$choices, list_name == l_name)$name
     }
 
     if (!is.na(uuid)) {
-      kobold_file$data <<- mutate(
-        kobold_file$data,!!q_name := ifelse(
+      object$data <<- mutate(
+        object$data,!!q_name := ifelse(
           X_uuid == uuid,
           select_mul_str_adder(!!sym(q_name), value, choices),!!sym(q_name)
         ),!!binary_name := ifelse(X_uuid == uuid,
@@ -126,8 +150,8 @@ kobold_cleaner <- function(kobold_file) {
     }
 
     else if (!is.na(relevant)) {
-      kobold_file$data <<- mutate(
-        kobold_file$data,!!q_name := ifelse(
+      object$data <<- mutate(
+        object$data,!!q_name := ifelse(
           !!convert_xls_code(relevant),
           select_mul_str_adder(!!sym(q_name), value, choices),!!sym(q_name)
         ),!!binary_name := ifelse(!!convert_xls_code(relevant),
@@ -164,16 +188,16 @@ kobold_cleaner <- function(kobold_file) {
 
   pmap(
     list(
-      kobold_file$cleaning$type,
-      kobold_file$cleaning$name,
-      kobold_file$cleaning$value,
-      kobold_file$cleaning$uuid,
-      kobold_file$cleaning$relevant
+      object$cleaning$type,
+      object$cleaning$name,
+      object$cleaning$value,
+      object$cleaning$uuid,
+      object$cleaning$relevant
     ),
     general_cleaner
   )
 
-  return(kobold_file)
+  return(object)
 }
 
 #' Remove select_multiple value
