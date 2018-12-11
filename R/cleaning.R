@@ -44,17 +44,20 @@ kobold_cleaner <- function(object) {
   # Change response function ------------------------------------------------------------------------------
   # Function to change value in a columns row(s) based on name of the cell, new value to place, and UUID or relevant logic.
 
-  change_response <- function(name, value, uuid, relevant) {
+  change_response <- function(q_name, value, uuid, relevant) {
+    sheet <- filter(object$survey, name == q_name)$group
+    print(sheet)
+
     if (!is.na(uuid)) {
-      object$data <<-
-        mutate(object$data,
-               !!name := ifelse(X_uuid == uuid, value,!!sym(name)))
+      object[[sheet]] <<-
+        mutate(object[[sheet]],
+               !!q_name := ifelse(X_uuid == uuid, value, !!sym(q_name)))
     }
 
     else if (!is.na(relevant)) {
-      object$data <<-
-        mutate(object$data,
-               !!name := ifelse(!!convert_xls_code(relevant), value,!!sym(name)))
+      object[[sheet]] <<-
+        mutate(object[[sheet]],
+               !!q_name := ifelse(!!convert_xls_code(relevant), value, !!sym(q_name)))
     }
 
     else {
@@ -63,8 +66,8 @@ kobold_cleaner <- function(object) {
           "Changing all values in {name} to {value} since no UUID or relevant logic provided"
         )
       )
-      object$data <<-
-        mutate(object$data,!!name := value)
+      object[[sheet]] <<-
+        mutate(object[[sheet]], !!q_name := value)
     }
   }
 
@@ -73,6 +76,8 @@ kobold_cleaner <- function(object) {
   # change_response, since there is no need to deal with multiple response options.
 
   remove_option <- function(q_name, value, uuid, relevant) {
+    sheet <- filter(object$survey, name == q_name)$group
+
     if (!str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
       change_response(q_name, value, uuid, relevant)
       warning(
@@ -84,7 +89,7 @@ kobold_cleaner <- function(object) {
 
     else {
       ## Here we get the name of the select_multiple binary column to change the value for
-      binary_name <- unique(names(object$data %>%
+      binary_name <- unique(names(object[[sheet]] %>%
                                     select(matches(
                                       paste0("(\\b", q_name, ")(.)(", value, "\\b)")
                                     ),-one_of(
@@ -94,19 +99,19 @@ kobold_cleaner <- function(object) {
 
     if (!is.na(uuid)) {
       ## making the changes if based on UUID
-      object$data <<- mutate(
-        object$data,!!q_name := ifelse(
+      object[[sheet]] <<- mutate(
+        object[[sheet]], !!q_name := ifelse(
           X_uuid == uuid,
           select_mul_str_removal(!!sym(q_name), value),!!sym(q_name)
-        ),!!binary_name := ifelse(X_uuid == uuid,
+        ), !!binary_name := ifelse(X_uuid == uuid,
                                   FALSE,!!sym(binary_name))
       )
     }
 
     else if (!is.na(relevant)) {
       # making the changes if based on relevant logic
-      object$data <<- mutate(
-        object$data,!!q_name := ifelse(
+      object[[sheet]] <<- mutate(
+        object[[sheet]], !!q_name := ifelse(
           !!convert_xls_code(relevant),
           select_mul_str_removal(!!sym(q_name), value),!!sym(q_name)
         ),!!binary_name := ifelse(
@@ -119,7 +124,9 @@ kobold_cleaner <- function(object) {
 
   # Add option function ------------------------------------------------------------------------------
 
-  add_option <- function(q_name, value, uuid, relevant) {
+  add_option <- function(sheet, q_name, value, uuid, relevant) {
+    sheet <- filter(object$survey, name == q_name)$group
+
     if (!str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
       stop(
         glue(
@@ -129,7 +136,7 @@ kobold_cleaner <- function(object) {
     }
     # Generating the name of the binary column and choices list
     else {
-      binary_name <- unique(names(object$data %>%
+      binary_name <- unique(names(object[[sheet]] %>%
                                     select(matches(
                                       paste0("(\\b", q_name, ")(.)(", value, "\\b)")
                                     ))))
@@ -140,8 +147,8 @@ kobold_cleaner <- function(object) {
     }
 
     if (!is.na(uuid)) {
-      object$data <<- mutate(
-        object$data,!!q_name := ifelse(
+      object[[sheet]] <<- mutate(
+        object[[sheet]], !!q_name := ifelse(
           X_uuid == uuid,
           select_mul_str_adder(!!sym(q_name), value, choices),!!sym(q_name)
         ),!!binary_name := ifelse(X_uuid == uuid,
@@ -150,8 +157,8 @@ kobold_cleaner <- function(object) {
     }
 
     else if (!is.na(relevant)) {
-      object$data <<- mutate(
-        object$data,!!q_name := ifelse(
+      object[[sheet]] <<- mutate(
+        object[[sheet]],!!q_name := ifelse(
           !!convert_xls_code(relevant),
           select_mul_str_adder(!!sym(q_name), value, choices),!!sym(q_name)
         ),!!binary_name := ifelse(!!convert_xls_code(relevant),
@@ -169,6 +176,7 @@ kobold_cleaner <- function(object) {
       remove_survey(uuid, relevant)
     } else if (type == "remove_option") {
       remove_option(
+        sheet = sheet,
         q_name = name,
         value = value,
         uuid = uuid,

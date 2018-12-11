@@ -70,6 +70,7 @@ read_xls_form <- function(filepath,
 
   # Isolating sheet names with data to be cleaned/worked with
   data_sheets <- c("data", rep_sheets)
+  object$data_sheets <- data_sheets
 
   # Creating list_name column for the survey sheet, for easy linkages to the choices sheet.
   # First we create new column removing all of the "type" values for selects, and removing blanks.
