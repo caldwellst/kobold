@@ -1,5 +1,5 @@
 #' @importFrom dplyr mutate filter
-#' @importFrom rlang sym
+#' @importFrom rlang sym abort warn
 #' @importFrom glue glue
 #' @importFrom purrr pmap map map_chr map_lgl
 #' @importFrom stringr str_remove str_trim str_replace str_c str_detect
@@ -61,7 +61,7 @@ kobold_cleaner <- function(object) {
     }
 
     else {
-      warning(
+      warn(
         glue(
           "Changing all values in {name} to {value} since no UUID or relevant logic provided"
         )
@@ -80,7 +80,7 @@ kobold_cleaner <- function(object) {
 
     if (!str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
       change_response(q_name, value, uuid, relevant)
-      warning(
+      warn(
         glue(
           "remove_option is removing the entire response {value} since {q_name} is a select_one question"
         )
@@ -128,7 +128,7 @@ kobold_cleaner <- function(object) {
     sheet <- filter(object$survey, name == q_name)$group
 
     if (!str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
-      stop(
+      abort(
         glue(
           "add_option failed to add {value} to {q_name} since it is not a select_multiple question"
         )
@@ -190,7 +190,7 @@ kobold_cleaner <- function(object) {
         relevant = relevant
       )
     } else {
-      stop(glue("Cleaning type {type} is incorrect"))
+      abort(glue("Cleaning type {type} is incorrect"))
     }
   }
 

@@ -17,12 +17,13 @@
 #'
 #' @importFrom readxl excel_sheets read_excel
 #' @importFrom stringr str_remove_all str_detect str_match str_c
-#' @importFrom dplyr mutate_all select matches one_of mutate_at vars filter
+#' @importFrom dplyr mutate_all select matches one_of mutate_at vars filter rename
 #' @importFrom lubridate as_datetime
 #' @importFrom magrittr %>%
 #' @importFrom purrr map
 #' @importFrom tidyr replace_na
 #' @importFrom glue glue_collapse glue
+#' @importFrom rlang warn is_empty
 #'
 #' @export
 read_xls_form <- function(filepath,
@@ -53,7 +54,7 @@ read_xls_form <- function(filepath,
 
   if(length(rep_missing) > 0) {
     rep_missing <- glue_collapse(rep_missing, sep = ", ")
-    warning(
+    warn(
       glue("Repeat group worksheets {rep_missing} were not found.")
     )
   }
@@ -156,6 +157,27 @@ read_xls_form <- function(filepath,
 
   map(data_sheets,
       convert_select_multiple)
+
+  # Rename UUID column function
+  rename_uuid <- function(sheet) {
+    names <- names(object[[sheet]])
+    if(!("uuid" %in% names)) {
+      uuid_reg <- "^.*(_uuid\\b)"
+      index <- which(str_detect(names, uuid_reg))
+      if(is_empty(index)) {
+        warn(
+          glue("Can't find uuid column in {sheet}.")
+        )
+      }
+
+      index = index[1]
+      object[[sheet]] <<- rename(object[[sheet]], uuid = index)
+    }
+  }
+
+  # Rename UUID columns
+  map(data_sheets,
+      rename_uuid)
 
   return(object)
 }
