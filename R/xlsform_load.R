@@ -3,9 +3,9 @@
 #' @description \code{read_xls_form} loads an XLS Form and its accompanying data into R.
 #'
 #' @details This function loads XLS Form Excel files into R, while also allowing additional sheets for exported data and cleaning.
-#' It's loaded as an S3 class \code{kobold}, and can be worked with using functions within this package, or the data can
-#' be retrieved as a data frame or tibble using generics. The columns of the data are given a class according to the
-#' survey and choices sheet.
+#'   It's loaded as an S3 class \code{kobold}, and can be worked with using functions within this package, or the data can
+#'   be retrieved as a data frame or tibble using generics. The columns of the data are given a class according to the
+#'   survey and choices sheet.
 #'
 #' @param filepath Path to the XLS Form
 #' @param data Name of the data worksheet, Default: 'data'
@@ -16,78 +16,188 @@
 #' @return Returns a \code{kobold} class object, a modified list containing the above data frames.
 #'
 #' @importFrom readxl excel_sheets read_excel
-#' @importFrom stringr str_remove_all str_detect str_match
-#' @importFrom dplyr mutate_all select matches one_of mutate_at vars filter
+#' @importFrom stringr str_remove_all str_detect str_match str_c
+#' @importFrom dplyr mutate_all select matches one_of mutate_at vars filter rename
 #' @importFrom lubridate as_datetime
 #' @importFrom magrittr %>%
 #' @importFrom purrr map
 #' @importFrom tidyr replace_na
+#' @importFrom glue glue_collapse glue
+#' @importFrom rlang warn is_empty
 #'
 #' @export
 read_xls_form <- function(filepath,
-                         data = "data",
-                         cleaning = "cleaning",
-                         survey = "survey",
-                         choices = "choices") {
-   ## Select only the sheets of the file that we need
-   worksheets <- excel_sheets(filepath)
-   worksheets <- worksheets[worksheets %in% c(choices, survey, data, cleaning)]
+                          data = "data",
+                          cleaning = "cleaning",
+                          survey = "survey",
+                          choices = "choices") {
+  # Select only the sheets of the file that we need
+  worksheets <- excel_sheets(filepath)
 
-   ## Loading the Excel sheets into a new class so we can make all names of the list objects the same
-   object <- new_kobold(data = read_excel(filepath, sheet = data),
-                        cleaning = read_excel(filepath, sheet = cleaning),
-                        survey = read_excel(filepath, sheet = survey),
-                        choices = read_excel(filepath, sheet = choices))
+  # Loading the Excel sheets into a new class so we can make all names of the list objects the same
+  object <- suppressWarnings(suppressMessages(new_kobold(
+    read_excel(filepath, data),
+    read_excel(filepath, cleaning),
+    read_excel(filepath, survey),
+    read_excel(filepath, choices)))
+  )
 
-   ## Creating list_name column for the survey sheet, for easy linkages to the choices sheet.
-   ## First we create new column removing all of the "type" values for selects, and removing blanks.
-   ## Then we make the value empty for a row that DIDN'T have a select question. So all that is left
-   ## is a character vector containing the list_names for selects!
+  # Load in repeat group data (if available)
 
-   object$survey$list_name <- str_remove_all(object$survey$type, "^.*(select_multiple|select multiple| |select_one|select one)")
-   object$survey$list_name[!str_detect(object$survey$type, "^.*(select_multiple|select multiple|select_one|select one)")] <- ""
+  rep_reg <- "^.*(begin_repeat|begin repeat)"
+  rep_rows <- filter(object$survey,
+                       str_detect(type, rep_reg))
+  rep_groups <- rep_rows$name
 
-   ## Function for converting columns to the proper type within the data sheet of the kobold object.
-   ## Uses R's scoping assignment to change the kobold variable in the broader function environment.
-   convert_columns <- function(types, converter) {
-      retype_types <- paste0("^(?!.*select).*(", paste(types, collapse = "|"),").*")
-      retype_names <- c(filter(object$survey, str_detect(type, retype_types))$name)
-      retype_cols <- unique(retype_names[retype_names %in% names(object$data)])
-      suppressWarnings(suppressMessages(
-         object$data <<- object$data %>% mutate_at(vars(one_of(retype_cols)), converter)
-      ))
-   }
+  rep_sheets <- worksheets[worksheets %in% rep_groups]
+  rep_missing <- rep_groups[!(rep_groups %in% worksheets)]
 
-   ## Converting the columns for each type
-   convert_columns(c("decimal", "integer", "range"), as.numeric)
-   convert_columns(c("start", "end", "today", "date", "time", "dateTime"), as_datetime)
+  if(length(rep_missing) > 0) {
+    rep_missing <- glue_collapse(rep_missing, sep = ", ")
+    warn(
+      glue("Repeat group worksheets {rep_missing} were not found.")
+    )
+  }
 
-   ## Function to convert columns of select_multiple individual options to logical vectors.
-   ## Uses the same scoping as the previous function. Have to convert select_multiple functions
-   ## first to numeric vectors (since they often arrive as "0" "1" character vectors) and then
-   ## convert to logical vectors. Most of the code here is spent trying to locate the columns
-   ## corresponding to the possible choices.
-   convert_select_multiple <- function() {
-      retype_lists <- c(filter(object$survey, str_detect(type, "^.*(select_multiple|select multiple)"))$list_name)
-      retype_lists <- paste0("^.*(", paste(retype_lists, collapse = "|"), ")s")
+  # Function to load in extra worksheets
 
-      retype_choice_names <- c(filter(object$choices, str_detect(list_name, retype_lists))$name)
-      retype_choice_names <- paste0("(", paste(retype_choice_names, collapse = "|"), ")$")
+  load_sheet <- function(sheet) {
+    suppressWarnings(suppressMessages(
+      object[[sheet]] <<- read_excel(filepath, sheet)
+    ))
+  }
 
-      retype_names <- c(filter(object$survey, str_detect(type, "^.*(select_multiple|select multiple)"))$name)
-      retype_names <- paste0("^(", paste(retype_names, collapse = "|"), ")")
+  map(rep_sheets, load_sheet)
 
-      retype_cols <- unique(names(object$data %>%
-                                     select(matches(retype_names)) %>%
-                                     select(matches(retype_choice_names)) %>%
-                                     select(-one_of(c(object$survey$name)))))
-      suppressWarnings(suppressMessages(
-         object$data[retype_cols] <<- mutate_all(object$data[retype_cols], function(x) as.logical(as.numeric(x)))
-      ))
-   }
+  # Isolating sheet names with data to be cleaned/worked with
+  data_sheets <- c("data", rep_sheets)
+  object$data_sheets <- data_sheets
 
-   convert_select_multiple()
+  # Creating list_name column for the survey sheet, for easy linkages to the choices sheet.
+  # First we create new column removing all of the "type" values for selects, and removing blanks.
+  # Then we make the value empty for a row that DIDN'T have a select question. So all that is left
+  # is a character vector containing the list_names for selects!
 
-   ## And return the kobold list!
-   return(object)
+  object$survey$list_name <- str_remove_all(
+    object$survey$type, "^.*(select_multiple|select multiple| |select_one|select one)")
+  object$survey$list_name[!str_detect(
+    object$survey$type,
+    "^.*(select_multiple|select multiple|select_one|select one)"
+  )] <- ""
+
+  # Function for converting columns to the proper type
+  convert_columns <- function(sheet, types, converter) {
+    types <- str_c(types, collapse = "|")
+    types <- str_c("^(?!.*select).*(", types, ").*")
+
+    name_rows <- filter(object$survey,
+                    str_detect(type, types))
+    cnv_names <- name_rows$name
+    sht_names <- names(object[[sheet]])
+    cols <- unique(cnv_names[cnv_names %in% sht_names])
+    suppressWarnings(suppressMessages(object[[sheet]] <<-
+                                        object[[sheet]] %>% mutate_at(vars(
+                                          one_of(cols)
+                                        ), converter)))
+  }
+
+  # Function to convert columns of select_multiple individual options to logical vectors
+  convert_select_multiple <- function(sheet) {
+    sel_mul_reg <- "^.*(select_multiple|select multiple)"
+    list_rows <- filter(object$survey, str_detect(type, sel_mul_reg))
+    lists <- list_rows$list_name
+    lists <- str_c(lists, collapse = "|")
+    lists_reg <- glue("^.*({lists})s")
+
+    choice_rows <- filter(object$choices, str_detect(list_name, lists_reg))
+    choices <- choice_rows$name
+    choices <- str_c(choices, collapse = "|")
+    choices_reg <- str_c("(", choices, ")$")
+
+    name_rows <- filter(object$survey, str_detect(type, sel_mul_reg))
+    names <- name_rows$name
+    names <- str_c(names, collapse = "|")
+    names_reg <- str_c("^(", names, ")")
+
+    survey_names <- object$survey$name
+
+    suppressWarnings(suppressMessages(
+      retype_cols <- object[[sheet]] %>%
+        select(-one_of(survey_names)) %>%
+        select(matches(names_reg)) %>%
+        select(matches(choices_reg))
+    ))
+
+    retype_names <- unique(names(retype_cols))
+
+    log_num <- function(x) {
+      as.logical(as.numeric(x))
+    }
+
+    object[[sheet]][retype_names] <<-
+      mutate_all(object[[sheet]][retype_names], log_num)
+
+  }
+
+  # Converting the columns for each type
+  map(data_sheets,
+      convert_columns,
+      c("decimal", "integer", "range"),
+      as.numeric)
+
+  map(data_sheets,
+      convert_columns,
+      c("start", "end", "today", "date", "time", "dateTime"),
+      as_datetime)
+
+  map(data_sheets,
+      convert_select_multiple)
+
+  # Rename UUID column function
+  rename_uuid <- function(sheet) {
+    names <- names(object[[sheet]])
+
+    if(!("uuid" %in% names)) {
+      uuid_reg <- "^.*(_uuid\\b)"
+      index <- which(str_detect(names, uuid_reg))
+
+      if(is_empty(index)) {
+        warn(
+          glue("Can't find uuid column in {sheet}.")
+        )
+      }
+
+      index = index[1]
+      object[[sheet]] <<- rename(object[[sheet]], uuid = index)
+    }
+  }
+
+  # Rename UUID columns
+  map(data_sheets,
+      rename_uuid)
+
+  # Identifying loop locations for questions
+  object$survey$group <- NA
+  begin_reg <- "^.*(begin_repeat|begin repeat)"
+  end_reg <- "^.*(end_repeat|end repeat)"
+  group <- "data"
+  i <- 1
+
+  while (i <= nrow(object$survey)) {
+    type <- object$survey$type[i]
+
+    if (str_detect(type, begin_reg)) {
+      group <- object$survey$name[i]
+    }
+
+    object$survey$group[i] <- group
+
+    if (str_detect(type, end_reg)) {
+      group <- "data"
+    }
+
+    i <- i + 1
+  }
+
+  return(object)
 }

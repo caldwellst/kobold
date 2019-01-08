@@ -7,14 +7,17 @@
 new_kobold(data, cleaning, survey, choices)
 }
 \arguments{
-\item{data}{Data frame containing exported data}
+\item{data}{Name of sheet containing data.}
 
-\item{cleaning}{Data frame containing cleaning sheet}
+\item{cleaning}{Name of sheet containing cleaning code.}
 
-\item{survey}{Data frame containing XLS Form survey}
+\item{survey}{Name of sheet containing XLSForm survey.}
 
-\item{choices}{Data frame containing XLS Form choices}
+\item{choices}{Name of sheet containing XLSForm choices.}
 }
 \description{
-This is a constructor of a kobold list using 4 components of an XLS Form survey, data outputs, and the kobold cleaning sheet.
+Constructor of a kobold list using XLSForm survey and choices and other possible sheets:
+* Main data sheet
+* Loop data sheet(s), which do not need to be explicitly loaded
+* Cleaning sheet
 }
