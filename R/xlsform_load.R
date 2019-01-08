@@ -36,10 +36,10 @@ read_xls_form <- function(filepath,
 
   # Loading the Excel sheets into a new class so we can make all names of the list objects the same
   object <- suppressWarnings(suppressMessages(new_kobold(
-    data = read_excel(filepath, data),
-    cleaning = read_excel(filepath, cleaning),
-    survey = read_excel(filepath, survey),
-    choices = read_excel(filepath, choices)))
+    read_excel(filepath, data),
+    read_excel(filepath, cleaning),
+    read_excel(filepath, survey),
+    read_excel(filepath, choices)))
   )
 
   # Load in repeat group data (if available)
@@ -85,8 +85,7 @@ read_xls_form <- function(filepath,
     "^.*(select_multiple|select multiple|select_one|select one)"
   )] <- ""
 
-  # Function for converting columns to the proper type within the data sheet of the kobold object.
-  # Uses R's scoping assignment to change the kobold variable in the broader function environment.
+  # Function for converting columns to the proper type
   convert_columns <- function(sheet, types, converter) {
     types <- str_c(types, collapse = "|")
     types <- str_c("^(?!.*select).*(", types, ").*")
@@ -102,11 +101,7 @@ read_xls_form <- function(filepath,
                                         ), converter)))
   }
 
-  # Function to convert columns of select_multiple individual options to logical vectors.
-  # Uses the same scoping as the previous function. Have to convert select_multiple functions
-  # first to numeric vectors (since they often arrive as "0" "1" character vectors) and then
-  # convert to logical vectors. Most of the code here is spent trying to locate the columns
-  # corresponding to the possible choices.
+  # Function to convert columns of select_multiple individual options to logical vectors
   convert_select_multiple <- function(sheet) {
     sel_mul_reg <- "^.*(select_multiple|select multiple)"
     list_rows <- filter(object$survey, str_detect(type, sel_mul_reg))
@@ -161,9 +156,11 @@ read_xls_form <- function(filepath,
   # Rename UUID column function
   rename_uuid <- function(sheet) {
     names <- names(object[[sheet]])
+
     if(!("uuid" %in% names)) {
       uuid_reg <- "^.*(_uuid\\b)"
       index <- which(str_detect(names, uuid_reg))
+
       if(is_empty(index)) {
         warn(
           glue("Can't find uuid column in {sheet}.")
@@ -178,6 +175,29 @@ read_xls_form <- function(filepath,
   # Rename UUID columns
   map(data_sheets,
       rename_uuid)
+
+  # Identifying loop locations for questions
+  object$survey$group <- NA
+  begin_reg <- "^.*(begin_repeat|begin repeat)"
+  end_reg <- "^.*(end_repeat|end repeat)"
+  group <- "data"
+  i <- 1
+
+  while (i <= nrow(object$survey)) {
+    type <- object$survey$type[i]
+
+    if (str_detect(type, begin_reg)) {
+      group <- object$survey$name[i]
+    }
+
+    object$survey$group[i] <- group
+
+    if (str_detect(type, end_reg)) {
+      group <- "data"
+    }
+
+    i <- i + 1
+  }
 
   return(object)
 }

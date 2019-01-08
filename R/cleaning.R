@@ -5,39 +5,16 @@
 #' @importFrom stringr str_remove str_trim str_replace str_c str_detect
 kobold_cleaner <- function(object) {
 
-  # Identifying loop locations for questions
-  object$survey$group <- NA
-  begin_reg <- "^.*(begin_repeat|begin repeat)"
-  end_reg <- "^.*(end_repeat|end repeat)"
-  group <- "data"
-  i <- 1
-
-  while (i <= nrow(object$survey)) {
-    type <- object$survey$type[i]
-
-    if (str_detect(type, begin_reg)) {
-      group <- object$survey$name[i]
-    }
-
-    object$survey$group[i] <- group
-
-    if (str_detect(type, end_reg)) {
-      group <- "data"
-    }
-
-    i <- i + 1
-  }
-
   # Function to remove surveys based on either a UUID or relevant logic
 
-  remove_survey <- function(uuid, relevant) {
-    if (uuid != "") {
-      object$data <<- filter(object$data,!(X_uuid == uuid))
+  remove_survey <- function(sheet, rem_uuid, relevant) {
+    if (!is.na(rem_uuid)) {
+      object[[sheet]] <<- filter(object[[sheet]], !(uuid == rem_uuid))
     }
     else {
       stopifnot(!is.na(relevant))
-      object$data <<-
-        filter(object$data, !(!!convert_xls_code(relevant)))
+      object[[sheet]] <<-
+        filter(object[[sheet]], !(!!convert_xls_code(relevant)))
     }
   }
 
@@ -46,12 +23,11 @@ kobold_cleaner <- function(object) {
 
   change_response <- function(q_name, value, uuid, relevant) {
     sheet <- filter(object$survey, name == q_name)$group
-    print(sheet)
 
     if (!is.na(uuid)) {
       object[[sheet]] <<-
         mutate(object[[sheet]],
-               !!q_name := ifelse(X_uuid == uuid, value, !!sym(q_name)))
+               !!q_name := ifelse(uuid == uuid, value, !!sym(q_name)))
     }
 
     else if (!is.na(relevant)) {
@@ -63,7 +39,7 @@ kobold_cleaner <- function(object) {
     else {
       warn(
         glue(
-          "Changing all values in {name} to {value} since no UUID or relevant logic provided"
+          "Changing all values in {q_name} to {value} since no UUID or relevant logic provided"
         )
       )
       object[[sheet]] <<-
@@ -101,9 +77,9 @@ kobold_cleaner <- function(object) {
       ## making the changes if based on UUID
       object[[sheet]] <<- mutate(
         object[[sheet]], !!q_name := ifelse(
-          X_uuid == uuid,
+          uuid == uuid,
           select_mul_str_removal(!!sym(q_name), value),!!sym(q_name)
-        ), !!binary_name := ifelse(X_uuid == uuid,
+        ), !!binary_name := ifelse(uuid == uuid,
                                   FALSE,!!sym(binary_name))
       )
     }
@@ -134,6 +110,7 @@ kobold_cleaner <- function(object) {
         )
       )
     }
+
     # Generating the name of the binary column and choices list
     else {
       binary_name <- unique(names(object[[sheet]] %>%
@@ -149,9 +126,9 @@ kobold_cleaner <- function(object) {
     if (!is.na(uuid)) {
       object[[sheet]] <<- mutate(
         object[[sheet]], !!q_name := ifelse(
-          X_uuid == uuid,
+          uuid == uuid,
           select_mul_str_adder(!!sym(q_name), value, choices),!!sym(q_name)
-        ),!!binary_name := ifelse(X_uuid == uuid,
+        ),!!binary_name := ifelse(uuid == uuid,
                                   TRUE,!!sym(binary_name))
       )
     }
@@ -173,10 +150,12 @@ kobold_cleaner <- function(object) {
     if (type == "change_response") {
       change_response(name, value, uuid, relevant)
     } else if (type == "remove_survey") {
-      remove_survey(uuid, relevant)
+      map(object$data_sheets,
+          remove_survey,
+          uuid,
+          relevant)
     } else if (type == "remove_option") {
       remove_option(
-        sheet = sheet,
         q_name = name,
         value = value,
         uuid = uuid,
