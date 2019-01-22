@@ -153,47 +153,98 @@ read_xls_form <- function(filepath,
   map(data_sheets,
       convert_select_multiple)
 
-  # Rename UUID column function
+  # Rename UUID columns
   rename_uuid <- function(sheet) {
     names <- names(object[[sheet]])
 
     if(!("uuid" %in% names)) {
       uuid_reg <- "^.*(_uuid\\b)"
-      index <- which(str_detect(names, uuid_reg))
+      ind <- which(str_detect(names, uuid_reg))
 
-      if(is_empty(index)) {
+      if(is_empty(ind)) {
         warn(
           glue("Can't find uuid column in {sheet}.")
         )
+      } else {
+        ind = ind[1]
+        object[[sheet]] <<- rename(object[[sheet]], uuid = ind)
       }
-
-      index = index[1]
-      object[[sheet]] <<- rename(object[[sheet]], uuid = index)
     }
   }
 
-  # Rename UUID columns
+  # Rename index columns
+  rename_index <- function(sheet) {
+    names <- names(object[[sheet]])
+
+    if(!("index" %in% names)) {
+      uuid_reg <- "^(.)?(_index\\b)"
+      ind <- which(str_detect(names, uuid_reg))
+
+      if(is_empty(ind)) {
+        warn(
+          glue("Can't find index column in {sheet}.")
+        )
+      } else {
+        ind = ind[1]
+        object[[sheet]] <<- rename(object[[sheet]], index = ind)
+      }
+    }
+  }
+
+  # Rename UUID and index columns
   map(data_sheets,
       rename_uuid)
 
-  # Identifying loop locations for questions
-  object$survey$group <- NA
-  begin_reg <- "^.*(begin_repeat|begin repeat)"
-  end_reg <- "^.*(end_repeat|end repeat)"
-  group <- "data"
+  map(data_sheets,
+      rename_index)
+
+  # Identifying loop locations (data sheet) for each question
+  # Also creates nesting column to identify deeply nested repeats if necessary
+  object$survey$sheet <- NA
+  object$survey$nesting <- NA
+  begin_rgx <- "^.*(begin_repeat|begin repeat)"
+  end_rgx <- "^.*(end_repeat|end repeat)"
+  sheet <- "data"
+  nesting <- c("")
   i <- 1
 
   while (i <= nrow(object$survey)) {
     type <- object$survey$type[i]
 
-    if (str_detect(type, begin_reg)) {
-      group <- object$survey$name[i]
+    if (str_detect(type, begin_rgx)) {
+      nesting <- append(nesting, sheet)
+      sheet <- object$survey$name[i]
     }
 
-    object$survey$group[i] <- group
+    object$survey$sheet[i] <- sheet
+    object$survey$nesting[i] <- glue_collapse(nesting, sep = " ")
 
-    if (str_detect(type, end_reg)) {
-      group <- "data"
+    if (str_detect(type, end_rgx)) {
+      sheet <- nesting[length(nesting)]
+      nesting <- nesting[-length(nesting)]
+    }
+
+    i <- i + 1
+  }
+
+  # Identifying groups and repeat groups each question
+  object$survey$group <- NA
+  begin_rgx <- "^.*(begin_group|begin group|begin repeat|begin_repeat)"
+  end_rgx <- "^.*(end_group|end group|end repeat|end_repeat)"
+  group <- c("")
+  i <- 1
+
+  while (i <= nrow(object$survey)) {
+    type <- object$survey$type[i]
+
+    if (str_detect(type, begin_rgx)) {
+      group <- append(group, object$survey$name[i])
+    }
+
+    object$survey$group[i] <- glue_collapse(group, sep = " ")
+
+    if (str_detect(type, end_rgx)) {
+      group <- group[-length(group)]
     }
 
     i <- i + 1
