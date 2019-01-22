@@ -177,8 +177,8 @@ read_xls_form <- function(filepath,
     names <- names(object[[sheet]])
 
     if(!("index" %in% names)) {
-      uuid_reg <- "^(.)?(_index\\b)"
-      ind <- which(str_detect(names, uuid_reg))
+      index_reg <- "^(.)?(_index\\b)"
+      ind <- which(str_detect(names, index_reg))
 
       if(is_empty(ind)) {
         warn(
@@ -191,12 +191,36 @@ read_xls_form <- function(filepath,
     }
   }
 
-  # Rename UUID and index columns
+  # Rename parent index columns
+  rename_parent_index <- function(sheet) {
+    names <- names(object[[sheet]])
+
+    if(!("parent_index" %in% names)) {
+      index_reg <- "^(.)?(_parent_index\\b)"
+      ind <- which(str_detect(names, index_reg))
+
+      if(is_empty(ind)) {
+        warn(
+          glue("Can't find parent_index column in {sheet}.")
+        )
+      } else {
+        ind = ind[1]
+        object[[sheet]] <<- rename(object[[sheet]], parent_index = ind)
+      }
+    }
+  }
+
+  # Rename UUID, index, and parent_index columns
   map(data_sheets,
       rename_uuid)
 
   map(data_sheets,
       rename_index)
+
+  if (length(data_sheets) > 1) {
+    map(data_sheets[-1],
+        rename_parent_index)
+  }
 
   # Identifying loop locations (data sheet) for each question
   # Also creates nesting column to identify deeply nested repeats if necessary
