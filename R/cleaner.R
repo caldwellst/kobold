@@ -1,51 +1,72 @@
 #' @importFrom dplyr mutate filter
 #' @importFrom rlang sym abort warn
 #' @importFrom glue glue
-#' @importFrom purrr pmap map map_chr map_lgl
-#' @importFrom stringr str_remove str_trim str_replace str_c str_detect
+#' @importFrom purrr pmap map map2 map_chr map_lgl
+#' @importFrom stringr str_remove str_trim str_replace str_c str_detect str_which
 kobold_cleaner <- function(object) {
 
-  # Function to remove surveys based on either a UUID or relevant logic
+  # Remove entries nested repeat groups
+  child_entry_remover <- function(sheet, rem_uuid, rem_index) {
+    children <- filter(object$data_sheets, parent == sheet)$sheets
+    sheet_num <- length(children)
 
-  remove_survey <- function(sheet, rem_uuid, rem_index, relevant) {
-    if (!is.na(rem_uuid)) {
-      for (i in 1:length(object$data_sheets$sheets)) {
-        object[[i]] <<- filter(object[[i]], !(uuid == rem_uuid))
+    if (!(is.na(rem_uuid)) & sheet_num > 0) {
+      for (i in 1:sheet_num) {
+        object[[children[i]]] <<- filter(object[[children[i]]], !(uuid %in% rem_uuid))
+        newborns <- filter(object$data_sheets, parent == sheet)$sheets
+        if (length(newborns) > 0) {
+          vars <- list(newborns,
+                       rem_uuid,
+                       rem_index)
+          pmap(vars, child_entry_remover)
+        }
       }
     }
-    else if (!is.na(rem_index)) {
-      object$data <<- filter(object$data, !(index == rem_index))
 
-      object[[sheet]] <<- filter(object[[sheet]], !(index == rem_index))
-    }
-    else {
-      stopifnot(!is.na(relevant))
-      object[[sheet]] <<-
-        filter(object[[sheet]], !(!!convert_xls_code(relevant)))
+    else if (!(is.na(rem_index)) & sheet_num > 0) {
+      for (i in 1:sheet_num) {
+        indices <- filter(object[[children[i]]], parent_index %in% rem_index)$index
+        newborns <- filter(object$data_sheets, parent == sheet)$sheets
+        object[[children[i]]] <<- filter(object[[children[i]]], !(parent_index %in% rem_index))
+        if (length(newborns) > 0) {
+          vars <- list(newborns,
+                       rem_uuid,
+                       indices)
+          pmap(vars, child_entry_remover)
+        }
+      }
     }
   }
 
-  # Function to remove surveys in a loop based on either a UUID, index, or relevant logic
-
-  remove_loop_entry <- function(sheet, rem_uuid, rem_index, relevant) {
+  # Remove entries from datasets
+  remove_entry <- function(sheet, rem_uuid, rem_index, relevant) {
     if (!is.na(rem_uuid)) {
       object[[sheet]] <<- filter(object[[sheet]], !(uuid == rem_uuid))
     }
+
     else if (!is.na(rem_index)) {
       object[[sheet]] <<- filter(object[[sheet]], !(index == rem_index))
     }
+
     else {
       stopifnot(!is.na(relevant))
-      object[[sheet]] <<-
-        filter(object[[sheet]], !(!!convert_xls_code(relevant)))
+      relevant <- convert_xls_code(relevant)
+      if (!is.na(match("uuid", names(object[[sheet]])))) {
+        rem_uuid <- filter(object[[sheet]], !(!!relevant))$uuid
+      }
+      else if (!is.na(match("index", names(object[[sheet]])))) {
+        rem_index <- filter(object[[sheet]], !(!!relevant))$index
+      }
+      object[[sheet]] <<- filter(object[[sheet]], !(!!relevant))
     }
+    child_entry_remover(sheet, rem_uuid, rem_index)
   }
 
   # Change response function ------------------------------------------------------------------------------
   # Function to change value in a columns row(s) based on name of the cell, new value to place, and UUID or relevant logic.
 
   change_response <- function(q_name, value, chg_uuid, relevant) {
-    sheet <- filter(object$survey, name == q_name)$group
+    sheet <- filter(object$survey, name == q_name)$sheet
 
     if (!is.na(chg_uuid)) {
       object[[sheet]] <<-
@@ -75,7 +96,7 @@ kobold_cleaner <- function(object) {
   # change_response, since there is no need to deal with multiple response options.
 
   remove_option <- function(q_name, value, rem_uuid, relevant) {
-    sheet <- filter(object$survey, name == q_name)$group
+    sheet <- filter(object$survey, name == q_name)$sheet
 
     if (!str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
       change_response(q_name, NA, rem_uuid, relevant)
@@ -121,7 +142,7 @@ kobold_cleaner <- function(object) {
   # Add option function ------------------------------------------------------------------------------
 
   add_option <- function(q_name, value, add_uuid, relevant) {
-    sheet <- filter(object$survey, name == q_name)$group
+    sheet <- filter(object$survey, name == q_name)$sheet
 
     if (!str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
       abort(
@@ -196,7 +217,7 @@ kobold_cleaner <- function(object) {
       relevants <- object$survey$relevant[indices]
 
       for (i in 1:indices_num) {
-        sheet <- filter(object$survey, name == vars[i])$group
+        sheet <- filter(object$survey, name == vars[i])$sheet
         if(!is.na(chg_uuid)) {
           object[[sheet]] <<-
             mutate(
@@ -222,13 +243,28 @@ kobold_cleaner <- function(object) {
 
   # General cleaning function ------------------------------------------------------------------------------
 
-  general_cleaner <- function(type, name, value, uuid, relevant) {
+  general_cleaner <- function(type, name, value, sheet, uuid, index, relevant) {
     if (type == "change_response") {
-      change_response(name, value, uuid, relevant)
+      change_response(
+        name,
+        value,
+        uuid,
+        relevant
+      )
     } else if (type == "remove_survey") {
-      map(remove_survey,
-          uuid,
-          relevant)
+      remove_entry(
+        "data",
+        uuid,
+        index,
+        relevant
+      )
+    } else if (type == "remove_loop_entry") {
+      remove_entry(
+        sheet,
+        uuid,
+        index,
+        relevant
+      )
     } else if (type == "remove_option") {
       remove_option(
         name,
@@ -246,7 +282,7 @@ kobold_cleaner <- function(object) {
     } else {
       abort(glue("Cleaning type {type} is incorrect"))
     }
-    relevant_updater(name, uuid, relevant)
+    #relevant_updater(name, uuid, relevant)
 
 
   }
@@ -256,7 +292,9 @@ kobold_cleaner <- function(object) {
       object$cleaning$type,
       object$cleaning$name,
       object$cleaning$value,
+      object$cleaning$sheet,
       object$cleaning$uuid,
+      object$cleaning$index,
       object$cleaning$relevant
     ),
     general_cleaner
