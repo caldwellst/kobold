@@ -68,19 +68,72 @@ kobold_cleaner <- function(object) {
   change_response <- function(q_name, value, chg_uuid, chg_index, relevant) {
     sheet <- filter(object$survey, name == q_name)$sheet
 
+    select_multiple <- str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")
+    if (select_multiple) {
+      l_name <- filter(object$survey, name == q_name)$list_name
+      choices <- filter(object$choices, list_name == l_name)$name
+      search_rgx <- glue("(\\b{q_name})(\\.|\\/)({choices}\\b)")
+      search_rgx <- glue_collapse(search_rgx, sep = "|")
+      all_binary_cols <- unique(names(object[[sheet]] %>%
+                                        select(matches(search_rgx))))
+
+      value_split <- as.character(unlist(str_split(value, pattern = " ")))
+      search_rgx <- glue("(\\b{q_name})(\\.|\\/)({value_split}\\b)")
+      search_rgx <- glue_collapse(search_rgx, sep = "|")
+      selected_binary_cols <- unique(names(object[[sheet]] %>%
+                                             select(matches(search_rgx))))
+    }
+
     if (!is.na(chg_uuid)) {
       object[[sheet]] <<- mutate(object[[sheet]],
                                  !!q_name := ifelse(uuid == chg_uuid, value, !!sym(q_name)))
+
+      if (select_multiple) {
+        for (i in 1:length(all_binary_cols)) {
+          object[[sheet]] <<- mutate(object[[sheet]],
+                                     !!all_binary_cols[i] := ifelse(uuid == chg_uuid, 0, !!sym(all_binary_cols[i])))
+        }
+
+        for (i in 1:length(selected_binary_cols)) {
+          object[[sheet]] <<- mutate(object[[sheet]],
+                                     !!selected_binary_cols[i] := ifelse(uuid == chg_uuid, 1, !!sym(selected_binary_cols[i])))
+        }
+      }
+
+
     }
 
     else if (!is.na(chg_index)) {
       object[[sheet]] <<- mutate(object[[sheet]],
                                  !!q_name := ifelse(index == chg_index, value, !!sym(q_name)))
+      if (select_multiple) {
+        for (i in 1:length(all_binary_cols)) {
+          object[[sheet]] <<- mutate(object[[sheet]],
+                                     !!all_binary_cols[i] := ifelse(index == chg_index, 0, !!sym(all_binary_cols[i])))
+        }
+
+        for (i in 1:length(selected_binary_cols)) {
+          object[[sheet]] <<- mutate(object[[sheet]],
+                                     !!selected_binary_cols[i] := ifelse(index == chg_index, 1, !!sym(selected_binary_cols[i])))
+        }
+      }
     }
 
     else if (!is.na(relevant)) {
       object[[sheet]] <<- mutate(object[[sheet]],
                                  !!q_name := ifelse(!!convert_xls_code(relevant), value, !!sym(q_name)))
+
+      if (select_multiple) {
+        for (i in 1:length(all_binary_cols)) {
+          object[[sheet]] <<- mutate(object[[sheet]],
+                                     !!all_binary_cols[i] := ifelse(!!convert_xls_code(relevant), 0, !!sym(all_binary_cols[i])))
+        }
+
+        for (i in 1:length(selected_binary_cols)) {
+          object[[sheet]] <<- mutate(object[[sheet]],
+                                     !!selected_binary_cols[i] := ifelse(!!convert_xls_code(relevant), 1, !!sym(selected_binary_cols[i])))
+        }
+      }
     }
 
     else {
@@ -113,7 +166,7 @@ kobold_cleaner <- function(object) {
     else {
       # Here we get the name of the select_multiple binary column to change the value for
       binary_name <- unique(names(object[[sheet]] %>%
-                                    select(matches(paste0("(\\b", q_name, ")(.)(", value, "\\b)")),
+                                    select(matches(paste0("(\\b", q_name, ")(\\.|\\/)(", value, "\\b)")),
                                            -one_of(c(object$survey$name)))))
     }
 
@@ -160,7 +213,7 @@ kobold_cleaner <- function(object) {
     else {
       binary_name <- unique(names(object[[sheet]] %>%
                                     select(matches(
-                                      paste0("(\\b", q_name, ")(.)(", value, "\\b)")
+                                      paste0("(\\b", q_name, ")(\\.|\\/)(", value, "\\b)")
                                     ))))
       l_name <- filter(object$survey, name == q_name)$list_name
       choices <- filter(object$choices, list_name == l_name)$name
@@ -217,7 +270,7 @@ kobold_cleaner <- function(object) {
       select_multiple <- TRUE
       l_name <- filter(object$survey, name == q_name)$list_name
       choices <- filter(object$choices, list_name == l_name)$name
-      search_rgx <- glue("(\\b{q_name})(.)({choices}\\b)")
+      search_rgx <- glue("(\\b{q_name})(\\.|\\/)({choices}\\b)")
       search_rgx <- glue_collapse(search_rgx, sep = "|")
       binary_names <- unique(names(object[[sheet]] %>%
                                      select(matches(search_rgx))))
@@ -325,7 +378,7 @@ kobold_cleaner <- function(object) {
     if (select_multiple) {
       l_name <- filter(object$survey, name == q_name)$list_name
       choices <- filter(object$choices, list_name == l_name)$name
-      search_rgx <- glue("(\\b{q_name})(.)({choices}\\b)")
+      search_rgx <- glue("(\\b{q_name})(\\.|\\/)({choices}\\b)")
       search_rgx <- glue_collapse(search_rgx, sep = "|")
       binary_names <- unique(names(object[[sheet]] %>%
                                     select(matches(search_rgx))))
