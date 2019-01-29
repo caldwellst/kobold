@@ -1,11 +1,11 @@
 #' @importFrom dplyr mutate filter
 #' @importFrom rlang sym abort warn
-#' @importFrom glue glue
+#' @importFrom glue glue glue_collapse
 #' @importFrom purrr pmap map map2 map_chr map_lgl
 #' @importFrom stringr str_remove str_trim str_replace str_c str_detect str_which
 kobold_cleaner <- function(object) {
 
-  # Remove entries nested repeat groups
+  # Remove entries from nested repeat groups
   child_entry_remover <- function(sheet, rem_uuid, rem_index) {
     children <- filter(object$data_sheets, parent == sheet)$sheets
     sheet_num <- length(children)
@@ -69,15 +69,13 @@ kobold_cleaner <- function(object) {
     sheet <- filter(object$survey, name == q_name)$sheet
 
     if (!is.na(chg_uuid)) {
-      object[[sheet]] <<-
-        mutate(object[[sheet]],
-               !!q_name := ifelse(uuid == chg_uuid, value, !!sym(q_name)))
+      object[[sheet]] <<- mutate(object[[sheet]],
+                                 !!q_name := ifelse(uuid == chg_uuid, value, !!sym(q_name)))
     }
 
     else if (!is.na(relevant)) {
-      object[[sheet]] <<-
-        mutate(object[[sheet]],
-               !!q_name := ifelse(!!convert_xls_code(relevant), value, !!sym(q_name)))
+      object[[sheet]] <<- mutate(object[[sheet]],
+                                 !!q_name := ifelse(!!convert_xls_code(relevant), value, !!sym(q_name)))
     }
 
     else {
@@ -158,10 +156,8 @@ kobold_cleaner <- function(object) {
                                     select(matches(
                                       paste0("(\\b", q_name, ")(.)(", value, "\\b)")
                                     ))))
-      l_name <-
-        filter(object$survey, name == q_name)$list_name
-      choices <-
-        filter(object$choices, list_name == l_name)$name
+      l_name <- filter(object$survey, name == q_name)$list_name
+      choices <- filter(object$choices, list_name == l_name)$name
     }
 
     if (!is.na(add_uuid)) {
@@ -203,9 +199,174 @@ kobold_cleaner <- function(object) {
     }
   }
 
+  # Updating for relevant logic used on separate sheets
+  separate_relevants <- function(original_sheet, sheet, q_name, relevant, chg_uuid, chg_index, chg_relevant) {
+    select_multiple <- FALSE
+    if (str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
+      select_multiple <- TRUE
+      l_name <- filter(object$survey, name == q_name)$list_name
+      choices <- filter(object$choices, list_name == l_name)$name
+      search_rgx <- glue("(\\b{q_name})(.)({choices}\\b)")
+      search_rgx <- glue_collapse(search_rgx, sep = "|")
+      binary_names <- unique(names(object[[sheet]] %>%
+                                     select(matches(search_rgx))))
+    }
+
+    # Get the UUID from the main sheet to connect to separate sheets
+    if (!is.na(chg_uuid)) {
+      chg_uuid <- filter(object[[original_sheet]], uuid %in% chg_uuid & !(!!convert_xls_code(relevant)))$uuid
+      object[[sheet]] <<- mutate(object[[sheet]],
+                                 !!q_name := ifelse(uuid == chg_uuid,
+                                                    NA,
+                                                    !!sym(q_name)))
+      if (select_multiple) {
+        for (i in 1:length(binary_names)) {
+          object[[sheet]] <<- mutate(object[[sheet]],
+                                     !!binary_names[i] := ifelse(uuid == chg_uuid,
+                                                                 NA,
+                                                                 !!sym(binary_names[i])))
+        }
+      }
+    }
+
+    # Get the index from the main sheet to connect to separate sheets
+    else if (!is.na(chg_index)) {
+
+      sheet_chain <- filter(object$data_sheets, sheets == sheet)$parent
+
+      while (sheet_chain[1] != original_sheet) {
+        parent <- filter(object$data_sheets, sheets == sheet_chain[1])$parent
+        sheet_chain <- append(sheet_chain, parent, before = 0)
+      }
+
+      sheet_chain <- append(sheet_chain, sheet)
+
+      chg_index <- filter(object[[original_sheet]], index %in% chg_index & !(!!convert_xls_code(relevant)))$index
+      for (i in 2:length(sheet_chain)) {
+        chg_index <- filter(object[[sheet_chain[i]]], parent_index %in% chg_index)$index
+      }
+
+      object[[sheet]] <<- mutate(object[[sheet]],
+                                 !!q_name := ifelse(index == chg_index,
+                                                    NA,
+                                                    !!sym(q_name)))
+      if (select_multiple) {
+        for (i in 1:length(binary_names)) {
+          object[[sheet]] <<- mutate(object[[sheet]],
+                                     !!binary_names[i] := ifelse(index == chg_index,
+                                                                 NA,
+                                                                 !!sym(binary_names[i])))
+        }
+      }
+    }
+    else if (!is.na(relevant)) {
+      if (!is.na(match("uuid", names(object[[sheet]])))) {
+        chg_uuid <- filter(object[[original_sheet]], !(!!convert_xls_code(chg_relevant)) & !(!!convert_xls_code(relevant)))$uuid
+        object[[sheet]] <<- mutate(object[[sheet]],
+                                   !!q_name := ifelse(uuid == chg_uuid,
+                                                      NA,
+                                                      !!sym(q_name)))
+        if (select_multiple) {
+          for (i in 1:length(binary_names)) {
+            object[[sheet]] <<- mutate(object[[sheet]],
+                                       !!binary_names[i] := ifelse(uuid == chg_uuid,
+                                                                   NA,
+                                                                   !!sym(binary_names[i])))
+          }
+        }
+      }
+
+      else if (!is.na(match("index", names(object[[sheet]])))) {
+        sheet_chain <- filter(object$data_sheets, sheets == sheet)$parent
+
+        while (sheet_chain[1] != original_sheet) {
+          parent <- filter(object$data_sheets, sheets == sheet_chain[1])$parent
+          sheet_chain <- append(sheet_chain, parent, before = 0)
+        }
+
+        sheet_chain <- append(sheet_chain, sheet)
+        chg_index <- filter(object[[original_sheet]], !(!!convert_xls_code(chg_relevant)) & !(!!convert_xls_code(relevant)))$index
+
+        for (i in 2:length(sheet_chain)) {
+          chg_index <- filter(object[[sheet_chain[i]]], parent_index %in% chg_index)$index
+        }
+
+        object[[sheet]] <<- mutate(object[[sheet]],
+                                   !!q_name := ifelse(index == chg_index,
+                                                      NA,
+                                                      !!sym(q_name)))
+        if (select_multiple) {
+          for (i in 1:length(binary_names)) {
+            object[[sheet]] <<- mutate(object[[sheet]],
+                                       !!binary_names[i] := ifelse(index == chg_index,
+                                                                   NA,
+                                                                   !!sym(binary_names[i])))
+          }
+        }
+      }
+    }
+    relevant_updater(q_name, chg_uuid, chg_index, chg_relevant)
+  }
+
+  # Updating for relevant logic used on the same sheet
+  same_relevants <- function(sheet, q_name, relevant, chg_uuid, chg_index, chg_relevant) {
+    select_multiple <- str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")
+    if (select_multiple) {
+      l_name <- filter(object$survey, name == q_name)$list_name
+      choices <- filter(object$choices, list_name == l_name)$name
+      search_rgx <- glue("(\\b{q_name})(.)({choices}\\b)")
+      search_rgx <- glue_collapse(search_rgx, sep = "|")
+      binary_names <- unique(names(object[[sheet]] %>%
+                                    select(matches(search_rgx))))
+    }
+
+    if (!is.na(chg_uuid)) {
+      object[[sheet]] <<- mutate(object[[sheet]],
+                                 !!q_name := ifelse(uuid == chg_uuid & !(!!convert_xls_code(relevant)),
+                                                     NA,
+                                                     !!sym(q_name)))
+      if (select_multiple) {
+        for (i in 1:length(binary_names)) {
+          object[[sheet]] <<- mutate(object[[sheet]],
+                                     !!binary_names[i] := ifelse(uuid == chg_uuid & !(!!convert_xls_code(relevant)),
+                                     NA,
+                                     !!sym(binary_names[i])))
+        }
+      }
+    } else if (!is.na(chg_index)) {
+      object[[sheet]] <<- mutate(object[[sheet]],
+                                 !!q_name := ifelse(index == chg_index & !(!!convert_xls_code(relevant)),
+                                                    NA,
+                                                    !!sym(q_name)))
+      if (select_multiple) {
+        for (i in 1:length(binary_names)) {
+          object[[sheet]] <<- mutate(object[[sheet]],
+                                     !!binary_names[i] := ifelse(index == chg_index & !(!!convert_xls_code(relevant)),
+                                                                 NA,
+                                                                 !!sym(binary_names[i])))
+        }
+      }
+    } else if (!is.na(relevant)) {
+      object[[sheet]] <<- mutate(object[[sheet]],
+                                 !!q_name := ifelse(!!convert_xls_code(chg_relevant) & !(!!convert_xls_code(relevant)),
+                                                    NA,
+                                                    !!sym(q_name)))
+      if (select_multiple) {
+        for (i in 1:length(binary_names)) {
+          object[[sheet]] <<- mutate(object[[sheet]],
+                                     !!binary_names[i] := ifelse(!!convert_xls_code(chg_relevant) & !(!!convert_xls_code(relevant)),
+                                                                 NA,
+                                                                 !!sym(binary_names[i])))
+        }
+      }
+    }
+    relevant_updater(q_name, chg_uuid, chg_index, chg_relevant)
+  }
+
+
   # Relevant logic updater
 
-  relevant_updater <- function(q_name, chg_uuid, relevant) {
+  relevant_updater <- function(q_name, chg_uuid, chg_index, chg_relevant) {
     srch_term <- glue("\\$\\{(q_name)\\}",
                       .open = "(",
                       .close = ")")
@@ -216,28 +377,57 @@ kobold_cleaner <- function(object) {
       vars <- object$survey$name[indices]
       relevants <- object$survey$relevant[indices]
 
-      for (i in 1:indices_num) {
-        sheet <- filter(object$survey, name == vars[i])$sheet
-        if(!is.na(chg_uuid)) {
-          object[[sheet]] <<-
-            mutate(
-              object[[sheet]],
-              !!vars[i] := ifelse(uuid == chg_uuid & !(!!convert_xls_code(relevants[i])),
-                                  NA,
-                                  !!sym(vars[i])))
-        }
+      group_rgx <- "^.*(begin_group|begin group|begin repeat|begin_repeat)"
+      group_indices <- str_detect(vars, group_rgx)
+      groups <- vars[group_indices]
+      groups_rel <- relevants[group_indices]
 
-        else if(!is.na(relevant)) {
-          object[[sheet]] <<-
-            mutate(
-              object[[sheet]],
-              !!vars[i] := ifelse(!!convert_xls_code(relevant) & !(!!convert_xls_code(relevants[i])),
-                                  NA,
-                                  !!sym(vars[i])))
-        }
+      vars <- vars[!group_indices]
+      relevants <- relevants[!group_indices]
 
-        relevant_updater(vars[i], chg_uuid, relevant)
+      if (length(groups) > 0) {
+        for (i in 1:length(groups)) {
+          group_rgx <- glue("\\b{groups[i]}\\b")
+          group_indices <- str_detect(object$survey$group, group_rgx)
+          group_vars <- object$survey$name[group_indices]
+          vars <- append(vars, group_vars)
+          relevants <- append(relevants, rep(groups_rel[i], length(group_vars)))
+        }
       }
+
+      indices <- match(vars, object$survey$name)
+      sheets <- object$survey$sheet[indices]
+      original_sheet <- filter(object$survey, name == q_name)$sheet
+
+      # Separating out relevants on separate sheets
+      nested_sheets <- sheets[!(sheets == original_sheet)]
+      nested_vars <- vars[!(sheets == original_sheet)]
+      nested_rel <- relevants[!(sheets == original_sheet)]
+
+      # Relevants on the same sheet
+      same_vars <- vars[sheets == original_sheet]
+      same_relevants <- relevants[sheets == original_sheet]
+
+      # Mapping the two different relevant update functions
+      pmap(list(
+        original_sheet,
+        nested_sheets,
+        nested_vars,
+        nested_rel,
+        chg_uuid,
+        chg_index,
+        chg_relevant
+      ), separate_relevants)
+
+      pmap(list(
+        original_sheet,
+        same_vars,
+        same_relevants,
+        chg_uuid,
+        chg_index,
+        chg_relevant
+      ), same_relevants)
+
     }
   }
 
@@ -282,7 +472,7 @@ kobold_cleaner <- function(object) {
     } else {
       abort(glue("Cleaning type {type} is incorrect"))
     }
-    #relevant_updater(name, uuid, relevant)
+    relevant_updater(name, uuid, index, relevant)
 
 
   }
