@@ -3,6 +3,7 @@
 #' @importFrom glue glue glue_collapse
 #' @importFrom purrr pmap map map2 map_chr map_lgl
 #' @importFrom stringr str_remove str_trim str_replace str_c str_detect str_which
+#' @importFrom lubridate dmy as_date
 kobold_cleaner <- function(object) {
 
   # Remove entries from nested repeat groups
@@ -67,8 +68,20 @@ kobold_cleaner <- function(object) {
 
   change_response <- function(q_name, value, chg_uuid, chg_index, relevant) {
     sheet <- filter(object$survey, name == q_name)$sheet
+    type <- filter(object$survey, name == q_name)$type
+
+    if (type %in% c("decimal", "integer", "range")) {
+      value <- as.integer(value)
+    }
+
+    if (type %in% c("date", "today")) {
+      print(value)
+      value <- as_date(as.integer(value), origin = "1899-12-30")
+      print(value)
+    }
 
     select_multiple <- str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")
+
     if (select_multiple) {
       l_name <- filter(object$survey, name == q_name)$list_name
       choices <- filter(object$choices, list_name == l_name)$name
@@ -427,7 +440,6 @@ kobold_cleaner <- function(object) {
     relevant_updater(q_name, chg_uuid, chg_index, chg_relevant)
   }
 
-
   # Relevant logic updater
 
   relevant_updater <- function(q_name, chg_uuid, chg_index, chg_relevant) {
@@ -556,6 +568,80 @@ kobold_cleaner <- function(object) {
     ),
     general_cleaner
   )
+
+  # Function for converting columns to the proper type
+  convert_columns <- function(sheet, types, converter) {
+    types <- str_c(types, collapse = "|")
+    types <- str_c("^(?!.*select).*(", types, ").*")
+
+    name_rows <- filter(object$survey,
+                        str_detect(type, types))
+    cnv_names <- name_rows$name
+    sht_names <- names(object[[sheet]])
+    cols <- unique(cnv_names[cnv_names %in% sht_names])
+    suppressWarnings(suppressMessages(object[[sheet]] <<-
+                                        object[[sheet]] %>% mutate_at(vars(
+                                          one_of(cols)
+                                        ), converter)))
+  }
+
+  # Function to convert columns of select_multiple individual options to logical vectors
+  convert_select_multiple <- function(sheet) {
+    sel_mul_reg <- "^.*(select_multiple|select multiple)"
+    list_rows <- filter(object$survey, str_detect(type, sel_mul_reg))
+    lists <- list_rows$list_name
+    lists <- str_c(lists, collapse = "|")
+    lists_reg <- glue("^.*({lists})s")
+
+    choice_rows <- filter(object$choices, str_detect(list_name, lists_reg))
+    choices <- choice_rows$name
+    choices <- str_c(choices, collapse = "|")
+    choices_reg <- str_c("(", choices, ")$")
+
+    name_rows <- filter(object$survey, str_detect(type, sel_mul_reg))
+    names <- name_rows$name
+    names <- str_c(names, collapse = "|")
+    names_reg <- str_c("^(", names, ")")
+
+    survey_names <- object$survey$name
+
+    suppressWarnings(suppressMessages(
+      retype_cols <- object[[sheet]] %>%
+        select(-one_of(survey_names)) %>%
+        select(matches(names_reg)) %>%
+        select(matches(choices_reg))
+    ))
+
+    retype_names <- unique(names(retype_cols))
+
+    log_num <- function(x) {
+      as.logical(as.numeric(x))
+    }
+
+    object[[sheet]][retype_names] <<-
+      mutate_all(object[[sheet]][retype_names], log_num)
+
+  }
+
+  # Converting
+
+  map(object$data_sheets$sheets,
+      convert_columns,
+      c("decimal", "integer", "range"),
+      as.numeric)
+
+  map(object$data_sheets$sheets,
+      convert_columns,
+      c("start", "end", "time", "dateTime"),
+      as_datetime)
+
+  map(object$data_sheets$sheets,
+      convert_columns,
+      c("today", "date"),
+      as_date)
+
+  map(object$data_sheets$sheets,
+      convert_select_multiple)
 
   return(object)
 }

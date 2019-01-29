@@ -18,7 +18,7 @@
 #' @importFrom readxl excel_sheets read_excel
 #' @importFrom stringr str_remove_all str_detect str_match str_c str_trim
 #' @importFrom dplyr mutate_all select matches one_of mutate_at vars filter rename
-#' @importFrom lubridate as_datetime
+#' @importFrom lubridate as_datetime as_date
 #' @importFrom magrittr %>%
 #' @importFrom purrr map
 #' @importFrom tidyr replace_na
@@ -205,8 +205,13 @@ read_xls_form <- function(filepath,
 
   map(data_sheets$sheets,
       convert_columns,
-      c("start", "end", "today", "date", "time", "dateTime"),
+      c("start", "end", "time", "dateTime"),
       as_datetime)
+
+  map(data_sheets$sheets,
+      convert_columns,
+      c("today", "date"),
+      as_date)
 
   map(data_sheets$sheets,
       convert_select_multiple)
