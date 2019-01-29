@@ -65,12 +65,17 @@ kobold_cleaner <- function(object) {
   # Change response function ------------------------------------------------------------------------------
   # Function to change value in a columns row(s) based on name of the cell, new value to place, and UUID or relevant logic.
 
-  change_response <- function(q_name, value, chg_uuid, relevant) {
+  change_response <- function(q_name, value, chg_uuid, chg_index, relevant) {
     sheet <- filter(object$survey, name == q_name)$sheet
 
     if (!is.na(chg_uuid)) {
       object[[sheet]] <<- mutate(object[[sheet]],
                                  !!q_name := ifelse(uuid == chg_uuid, value, !!sym(q_name)))
+    }
+
+    else if (!is.na(chg_index)) {
+      object[[sheet]] <<- mutate(object[[sheet]],
+                                 !!q_name := ifelse(index == chg_index, value, !!sym(q_name)))
     }
 
     else if (!is.na(relevant)) {
@@ -93,7 +98,7 @@ kobold_cleaner <- function(object) {
   # Removes singular value from a response. For non-select_multiple questions, just instead run
   # change_response, since there is no need to deal with multiple response options.
 
-  remove_option <- function(q_name, value, rem_uuid, relevant) {
+  remove_option <- function(q_name, value, rem_uuid, rem_index, relevant) {
     sheet <- filter(object$survey, name == q_name)$sheet
 
     if (!str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
@@ -114,32 +119,33 @@ kobold_cleaner <- function(object) {
 
     if (!is.na(rem_uuid)) {
       ## making the changes if based on UUID
-      object[[sheet]] <<- mutate(
-        object[[sheet]], !!q_name := ifelse(
-          uuid == rem_uuid,
-          select_mul_str_removal(!!sym(q_name), value),!!sym(q_name)
-        ), !!binary_name := ifelse(uuid == rem_uuid,
-                                  FALSE,!!sym(binary_name))
-      )
+      object[[sheet]] <<- mutate(object[[sheet]], !!q_name := ifelse(uuid == rem_uuid,
+                                                                     select_mul_str_removal(!!sym(q_name), value),
+                                                                     !!sym(q_name)),
+                                 !!binary_name := ifelse(uuid == rem_uuid, FALSE,!!sym(binary_name)))
+    }
+
+    else if (!is.na(rem_index)) {
+      ## making the changes if based on UUID
+      object[[sheet]] <<- mutate(object[[sheet]], !!q_name := ifelse(index == rem_index,
+                                                                     select_mul_str_removal(!!sym(q_name), value),
+                                                                     !!sym(q_name)),
+                                 !!binary_name := ifelse(index == rem_index, FALSE,!!sym(binary_name)))
     }
 
     else if (!is.na(relevant)) {
       # making the changes if based on relevant logic
-      object[[sheet]] <<- mutate(
-        object[[sheet]], !!q_name := ifelse(
-          !!convert_xls_code(relevant),
-          select_mul_str_removal(!!sym(q_name), value),!!sym(q_name)
-        ),!!binary_name := ifelse(
-          !!convert_xls_code(relevant),
-          FALSE,!!sym(binary_name)
-        )
-      )
+      object[[sheet]] <<- mutate(object[[sheet]],
+                                 !!q_name := ifelse(!!convert_xls_code(relevant),
+                                                    select_mul_str_removal(!!sym(q_name), value),
+                                                    !!sym(q_name)),
+                                 !!binary_name := ifelse(!!convert_xls_code(relevant), FALSE,!!sym(binary_name)))
     }
   }
 
   # Add option function ------------------------------------------------------------------------------
 
-  add_option <- function(q_name, value, add_uuid, relevant) {
+  add_option <- function(q_name, value, add_uuid, add_index, relevant) {
     sheet <- filter(object$survey, name == q_name)$sheet
 
     if (!str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
@@ -161,27 +167,32 @@ kobold_cleaner <- function(object) {
     }
 
     if (!is.na(add_uuid)) {
-      object[[sheet]] <<- mutate(
-        object[[sheet]],
-        !!q_name := ifelse(uuid == add_uuid,
-                           select_mul_str_adder(!!sym(q_name),
-                                                value,
-                                                choices),
-                           !!sym(q_name)),
-        !!binary_name := ifelse(uuid == add_uuid,
-                                TRUE,
-                                !!sym(binary_name)))
+      object[[sheet]] <<- mutate(object[[sheet]],
+                                 !!q_name := ifelse(uuid == add_uuid,
+                                                    select_mul_str_adder(!!sym(q_name), value, choices),
+                                                    !!sym(q_name)),
+                                 !!binary_name := ifelse(uuid == add_uuid,
+                                                         TRUE,
+                                                         !!sym(binary_name)))
+    }
+
+    else if (!is.na(add_index)) {
+      object[[sheet]] <<- mutate(object[[sheet]],
+                                 !!q_name := ifelse(index == add_index,
+                                                    select_mul_str_adder(!!sym(q_name), value, choices),
+                                                    !!sym(q_name)),
+                                 !!binary_name := ifelse(index == add_index,
+                                                         TRUE,
+                                                         !!sym(binary_name)))
     }
 
     else if (!is.na(relevant)) {
-      object[[sheet]] <<- mutate(
-        object[[sheet]],
-        !!q_name := ifelse(!!convert_xls_code(relevant),
-                           select_mul_str_adder(!!sym(q_name), value, choices),
-                           !!sym(q_name)),
-        !!binary_name := ifelse(!!convert_xls_code(relevant),
-                                TRUE,
-                                !!sym(binary_name)))
+      object[[sheet]] <<- mutate(object[[sheet]],
+                                 !!q_name := ifelse(!!convert_xls_code(relevant),
+                                                    select_mul_str_adder(!!sym(q_name), value, choices),
+                                                    !!sym(q_name)),
+                                 !!binary_name := ifelse(!!convert_xls_code(relevant),
+                                                         TRUE,!!sym(binary_name)))
     }
 
     else {
@@ -439,6 +450,7 @@ kobold_cleaner <- function(object) {
         name,
         value,
         uuid,
+        index,
         relevant
       )
     } else if (type == "remove_survey") {
@@ -460,6 +472,7 @@ kobold_cleaner <- function(object) {
         name,
         value,
         uuid,
+        index,
         relevant
       )
     } else if (type == "add_option") {
@@ -467,6 +480,7 @@ kobold_cleaner <- function(object) {
         name,
         value,
         uuid,
+        index,
         relevant
       )
     } else {
