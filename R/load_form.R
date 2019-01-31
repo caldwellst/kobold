@@ -23,7 +23,7 @@
 #' @importFrom purrr map
 #' @importFrom tidyr replace_na
 #' @importFrom glue glue_collapse glue
-#' @importFrom rlang warn is_empty
+#' @importFrom rlang warn is_empty set_env get_env
 #' @importFrom tibble tibble
 #'
 #' @export

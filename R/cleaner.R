@@ -75,9 +75,7 @@ kobold_cleaner <- function(object) {
     }
 
     if (type %in% c("date", "today")) {
-      print(value)
       value <- as_date(as.integer(value), origin = "1899-12-30")
-      print(value)
     }
 
     select_multiple <- str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")
@@ -89,6 +87,7 @@ kobold_cleaner <- function(object) {
       search_rgx <- glue_collapse(search_rgx, sep = "|")
       all_binary_cols <- unique(names(object[[sheet]] %>%
                                         select(matches(search_rgx))))
+      all_col_change <- ifelse(is.na(value), NA, 0)
 
       value_split <- as.character(unlist(str_split(value, pattern = " ")))
       search_rgx <- glue("(\\b{q_name})(\\.|\\/)({value_split}\\b)")
@@ -104,12 +103,13 @@ kobold_cleaner <- function(object) {
       if (select_multiple) {
         for (i in 1:length(all_binary_cols)) {
           object[[sheet]] <<- mutate(object[[sheet]],
-                                     !!all_binary_cols[i] := ifelse(uuid == chg_uuid, 0, !!sym(all_binary_cols[i])))
+                                     !!all_binary_cols[i] := ifelse(uuid == chg_uuid, all_col_change, !!sym(all_binary_cols[i])))
         }
-
-        for (i in 1:length(selected_binary_cols)) {
-          object[[sheet]] <<- mutate(object[[sheet]],
-                                     !!selected_binary_cols[i] := ifelse(uuid == chg_uuid, 1, !!sym(selected_binary_cols[i])))
+        if (!is.na(value)) {
+          for (i in 1:length(selected_binary_cols)) {
+            object[[sheet]] <<- mutate(object[[sheet]],
+                                       !!selected_binary_cols[i] := ifelse(uuid == chg_uuid, 1, !!sym(selected_binary_cols[i])))
+          }
         }
       }
 
@@ -122,12 +122,14 @@ kobold_cleaner <- function(object) {
       if (select_multiple) {
         for (i in 1:length(all_binary_cols)) {
           object[[sheet]] <<- mutate(object[[sheet]],
-                                     !!all_binary_cols[i] := ifelse(index == chg_index, 0, !!sym(all_binary_cols[i])))
+                                     !!all_binary_cols[i] := ifelse(index == chg_index, all_col_change, !!sym(all_binary_cols[i])))
         }
 
-        for (i in 1:length(selected_binary_cols)) {
-          object[[sheet]] <<- mutate(object[[sheet]],
-                                     !!selected_binary_cols[i] := ifelse(index == chg_index, 1, !!sym(selected_binary_cols[i])))
+        if (!is.na(value)) {
+          for (i in 1:length(selected_binary_cols)) {
+            object[[sheet]] <<- mutate(object[[sheet]],
+                                       !!selected_binary_cols[i] := ifelse(index == chg_index, 1, !!sym(selected_binary_cols[i])))
+          }
         }
       }
     }
@@ -139,12 +141,14 @@ kobold_cleaner <- function(object) {
       if (select_multiple) {
         for (i in 1:length(all_binary_cols)) {
           object[[sheet]] <<- mutate(object[[sheet]],
-                                     !!all_binary_cols[i] := ifelse(!!convert_xls_code(relevant), 0, !!sym(all_binary_cols[i])))
+                                     !!all_binary_cols[i] := ifelse(!!convert_xls_code(relevant), all_col_change, !!sym(all_binary_cols[i])))
         }
 
-        for (i in 1:length(selected_binary_cols)) {
-          object[[sheet]] <<- mutate(object[[sheet]],
-                                     !!selected_binary_cols[i] := ifelse(!!convert_xls_code(relevant), 1, !!sym(selected_binary_cols[i])))
+        if (!is.na(value)) {
+          for (i in 1:length(selected_binary_cols)) {
+            object[[sheet]] <<- mutate(object[[sheet]],
+                                       !!selected_binary_cols[i] := ifelse(!!convert_xls_code(relevant), 1, !!sym(selected_binary_cols[i])))
+          }
         }
       }
     }
@@ -509,7 +513,8 @@ kobold_cleaner <- function(object) {
 
   # General cleaning function ------------------------------------------------------------------------------
 
-  general_cleaner <- function(type, name, value, sheet, uuid, index, relevant) {
+  general_cleaner <- function(type, name, value, sheet, uuid, index, relevant, cleaning_row) {
+    print(cleaning_row)
     if (type == "change_response") {
       change_response(
         name,
@@ -564,7 +569,8 @@ kobold_cleaner <- function(object) {
       object$cleaning$sheet,
       object$cleaning$uuid,
       object$cleaning$index,
-      object$cleaning$relevant
+      object$cleaning$relevant,
+      1:nrow(object$cleaning)
     ),
     general_cleaner
   )
@@ -623,8 +629,7 @@ kobold_cleaner <- function(object) {
 
   }
 
-  # Converting
-
+  # Converting the columns for each type
   map(object$data_sheets$sheets,
       convert_columns,
       c("decimal", "integer", "range"),
