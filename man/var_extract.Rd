@@ -12,7 +12,7 @@ var_extract(string)
 \value{
 String value of the variable, which can be parsed for use in filtering datasets.
   Works together with other internal functions to fully interpret relevant logic string from XLS Form
-  coding in `convert_relevant`.
+  coding in `convert_relevant` and `convert_calculate`.
 }
 \description{
 `convert_selected` extracts the variable from the XLS Form
