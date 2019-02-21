@@ -42,6 +42,12 @@ read_xls_form <- function(filepath,
     read_excel(filepath, choices)))
   )
 
+  # Identifying loops and groups for each question -----------------------------
+  identify_groups(env)
+
+  # Identify list name for select questions ------------------------------------
+  identify_list_name(env)
+
   # Identify repeat group worksheets -------------------------------------------
 
   rep_reg <- "^.*(begin_repeat|begin repeat)"
@@ -71,12 +77,6 @@ read_xls_form <- function(filepath,
   }
 
   map(rep_sheets, load_sheet)
-
-  # Identifying loops and groups for each question -----------------------------
-  identify_groups(env)
-
-  # Identify list name for select questions ------------------------------------
-  identify_list_name(env)
 
   # Isolating sheet names with data to be cleaned/worked with
   data_sheets <- tibble(sheets = c("data", rep_sheets),
