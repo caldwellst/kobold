@@ -32,16 +32,17 @@ convert_selected <- function(string) {
 #'
 #' @importFrom stringr str_match
 var_extract <- function(string) {
-   str_match(string, "\\$\\{(.*?)\\}")[,2]
+  str_match(string, "\\$\\{(.*?)\\}")[,2]
 }
 
-#' @title Interpret count-selected function from XLS Form
-#' @description `convert_count_selected` converts count-selected(${var}) into an equivalent R statement.
+#' Interpret count-selected function from XLS Form
+#'
+#' `convert_count_selected` converts count-selected(${var}) into an equivalent R statement.
 #'
 #' @return Returns a string
-#' value of the format str_count(var, ' '), which can be #' parsed for use in filtering
-#' datasets. Works together with other internal functions #' to fully intrepet relevant
-#' logic strings from XLS Form coding in `convert_relevant` and `convert_calculate`.
+#'   value of the format `str_count(var, ' ')`, which can be parsed for use in filtering
+#'   datasets. Works together with other internal functions to fully intrepet relevant
+#'   logic strings from XLS Form coding in `convert_relevant()` and `convert_calculate()`.
 #'
 #' @param string String to be interpreted, should be of the format "count-selected(${var})"
 #'
@@ -113,7 +114,7 @@ convert_relevant <- function(string) {
    string <- str_replace_all(string, c("\\band\\b" = "&",
                                        "\\bor\\b" = "|",
                                        "\\bnot\\b" = "!",
-                                       "=" = "=="))
+                                       "(?<!!)=" = "=="))
    string <- str_replace_all(string, "\\$\\{(.*?)\\}", var_extract)
    relevant_expr <- parse_expr(string)
    return(relevant_expr)

@@ -11,9 +11,9 @@ convert_count_selected(string)
 }
 \value{
 Returns a string
-value of the format str_count(var, ' '), which can be #' parsed for use in filtering
-datasets. Works together with other internal functions #' to fully intrepet relevant
-logic strings from XLS Form coding in `convert_relevant` and `convert_calculate`.
+  value of the format `str_count(var, ' ')`, which can be parsed for use in filtering
+  datasets. Works together with other internal functions to fully intrepet relevant
+  logic strings from XLS Form coding in `convert_relevant()` and `convert_calculate()`.
 }
 \description{
 `convert_count_selected` converts count-selected(${var}) into an equivalent R statement.

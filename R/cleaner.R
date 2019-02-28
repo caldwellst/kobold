@@ -1,186 +1,13 @@
-#' @importFrom dplyr mutate filter
-#' @importFrom rlang sym abort warn current_env
-#' @importFrom glue glue glue_collapse
-#' @importFrom purrr pmap map map2 map_chr map_lgl
-#' @importFrom stringr str_remove str_trim str_replace str_c str_detect str_which
-#' @importFrom lubridate dmy as_date
+#' Clean XLSForm survey data
+#'
+#' @importFrom rlang current_env abort
+#' @importFrom purrr pmap
+#'
+#'
 kobold_cleaner <- function(object) {
 
   # Getting current environment
   env <- current_env()
-
-  # Remove entries from nested repeat groups
-  child_entry_remover <- function(sheet, rem_uuid, rem_index) {
-    children <- filter(object$data_sheets, parent == sheet)$sheets
-    sheet_num <- length(children)
-
-    if (!(is.na(rem_uuid)) & sheet_num > 0) {
-      for (i in 1:sheet_num) {
-        object[[children[i]]] <<- filter(object[[children[i]]], !(uuid %in% rem_uuid))
-        newborns <- filter(object$data_sheets, parent == sheet)$sheets
-        if (length(newborns) > 0) {
-          vars <- list(newborns,
-                       rem_uuid,
-                       rem_index)
-          pmap(vars, child_entry_remover)
-        }
-      }
-    }
-
-    else if (!(is.na(rem_index)) & sheet_num > 0) {
-      for (i in 1:sheet_num) {
-        indices <- filter(object[[children[i]]], parent_index %in% rem_index)$index
-        newborns <- filter(object$data_sheets, parent == sheet)$sheets
-        object[[children[i]]] <<- filter(object[[children[i]]], !(parent_index %in% rem_index))
-        if (length(newborns) > 0) {
-          vars <- list(newborns,
-                       rem_uuid,
-                       indices)
-          pmap(vars, child_entry_remover)
-        }
-      }
-    }
-  }
-
-  # Remove entries from datasets
-  remove_entry <- function(sheet, rem_uuid, rem_index, relevant) {
-    if (!is.na(rem_uuid)) {
-      object[[sheet]] <<- filter(object[[sheet]], !(uuid == rem_uuid))
-    }
-
-    else if (!is.na(rem_index)) {
-      object[[sheet]] <<- filter(object[[sheet]], !(index == rem_index))
-    }
-
-    else {
-      stopifnot(!is.na(relevant))
-      relevant <- convert_relevant(relevant)
-      if (!is.na(match("uuid", names(object[[sheet]])))) {
-        rem_uuid <- filter(object[[sheet]], !(!!relevant))$uuid
-      }
-      else if (!is.na(match("index", names(object[[sheet]])))) {
-        rem_index <- filter(object[[sheet]], !(!!relevant))$index
-      }
-      object[[sheet]] <<- filter(object[[sheet]], !(!!relevant))
-    }
-    child_entry_remover(sheet, rem_uuid, rem_index)
-  }
-
-  # Remove option function ------------------------------------------------------------------------------
-  # Removes singular value from a response. For non-select_multiple questions, just instead run
-  # change_response, since there is no need to deal with multiple response options.
-
-  remove_option <- function(q_name, value, rem_uuid, rem_index, relevant) {
-    sheet <- filter(object$survey, name == q_name)$sheet
-
-    if (!str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
-      change_response(q_name, NA, rem_uuid, relevant)
-      warn(
-        glue(
-          "remove_option is removing the entire response {value} since {q_name} is a select_one question"
-        )
-      )
-    }
-
-    else {
-      # Here we get the name of the select_multiple binary column to change the value for
-      binary_name <- unique(names(object[[sheet]] %>%
-                                    select(matches(paste0("(\\b", q_name, ")(\\.|\\/)(", value, "\\b)")),
-                                           -one_of(c(object$survey$name)))))
-    }
-
-    if (!is.na(rem_uuid)) {
-      ## making the changes if based on UUID
-      object[[sheet]] <<- mutate(object[[sheet]], !!q_name := ifelse(uuid == rem_uuid,
-                                                                     select_mul_str_removal(!!sym(q_name), value),
-                                                                     !!sym(q_name)),
-                                 !!binary_name := ifelse(uuid == rem_uuid, FALSE,!!sym(binary_name)))
-    }
-
-    else if (!is.na(rem_index)) {
-      ## making the changes if based on UUID
-      object[[sheet]] <<- mutate(object[[sheet]], !!q_name := ifelse(index == rem_index,
-                                                                     select_mul_str_removal(!!sym(q_name), value),
-                                                                     !!sym(q_name)),
-                                 !!binary_name := ifelse(index == rem_index, FALSE,!!sym(binary_name)))
-    }
-
-    else if (!is.na(relevant)) {
-      # making the changes if based on relevant logic
-      object[[sheet]] <<- mutate(object[[sheet]],
-                                 !!q_name := ifelse(!!convert_relevant(relevant),
-                                                    select_mul_str_removal(!!sym(q_name), value),
-                                                    !!sym(q_name)),
-                                 !!binary_name := ifelse(!!convert_relevant(relevant), FALSE,!!sym(binary_name)))
-    }
-  }
-
-  # Add option function ------------------------------------------------------------------------------
-
-  add_option <- function(q_name, value, add_uuid, add_index, relevant) {
-    sheet <- filter(object$survey, name == q_name)$sheet
-
-    if (!str_detect(c(filter(object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
-      abort(
-        glue(
-          "add_option failed to add {value} to {q_name} since it is not a select_multiple question"
-        )
-      )
-    }
-
-    # Generating the name of the binary column and choices list
-    else {
-      binary_name <- unique(names(object[[sheet]] %>%
-                                    select(matches(
-                                      paste0("(\\b", q_name, ")(\\.|\\/)(", value, "\\b)")
-                                    ))))
-      l_name <- filter(object$survey, name == q_name)$list_name
-      choices <- filter(object$choices, list_name == l_name)$name
-    }
-
-    if (!is.na(add_uuid)) {
-      object[[sheet]] <<- mutate(object[[sheet]],
-                                 !!q_name := ifelse(uuid == add_uuid,
-                                                    select_mul_str_adder(!!sym(q_name), value, choices),
-                                                    !!sym(q_name)),
-                                 !!binary_name := ifelse(uuid == add_uuid,
-                                                         TRUE,
-                                                         !!sym(binary_name)))
-    }
-
-    else if (!is.na(add_index)) {
-      object[[sheet]] <<- mutate(object[[sheet]],
-                                 !!q_name := ifelse(index == add_index,
-                                                    select_mul_str_adder(!!sym(q_name), value, choices),
-                                                    !!sym(q_name)),
-                                 !!binary_name := ifelse(index == add_index,
-                                                         TRUE,
-                                                         !!sym(binary_name)))
-    }
-
-    else if (!is.na(relevant)) {
-      object[[sheet]] <<- mutate(object[[sheet]],
-                                 !!q_name := ifelse(!!convert_relevant(relevant),
-                                                    select_mul_str_adder(!!sym(q_name), value, choices),
-                                                    !!sym(q_name)),
-                                 !!binary_name := ifelse(!!convert_relevant(relevant),
-                                                         TRUE,!!sym(binary_name)))
-    }
-
-    else {
-      warn(
-        glue(
-          "Adding {value} to all instances of {q_name} since no UUID or relevant logic provided"
-        )
-      )
-
-      object[[sheet]] <<- mutate(
-        object[[sheet]],
-        !!q_name := select_mul_str_adder(!!sym(q_name), value, choices),
-        !!binary_name := TRUE
-      )
-    }
-  }
 
   # General cleaning function ------------------------------------------------------------------------------
 
@@ -200,14 +27,16 @@ kobold_cleaner <- function(object) {
         "data",
         uuid,
         index,
-        relevant
+        relevant,
+        env
       )
     } else if (type == "remove_loop_entry") {
       remove_entry(
         sheet,
         uuid,
         index,
-        relevant
+        relevant,
+        env
       )
     } else if (type == "remove_option") {
       remove_option(
@@ -215,7 +44,8 @@ kobold_cleaner <- function(object) {
         value,
         uuid,
         index,
-        relevant
+        relevant,
+        env
       )
     } else if (type == "add_option") {
       add_option(
@@ -223,12 +53,12 @@ kobold_cleaner <- function(object) {
         value,
         uuid,
         index,
-        relevant
+        relevant,
+        env
       )
     } else {
       abort(glue("Cleaning type {type} is incorrect"))
     }
-    relevant_updater(name, uuid, index, relevant)
   }
 
   pmap(
@@ -245,15 +75,24 @@ kobold_cleaner <- function(object) {
     general_cleaner, env
   )
 
+  # Updating the relevant logic for the data
+  object <- relevant_updater(object)
+
   # Converting the columns for each type
   class_converter(env)
 
   return(object)
 }
 
-# Change response function ------------------------------------------------------------------------------
-# Function to change value in a columns row(s) based on name of the cell, new value to place, and UUID or relevant logic.
-
+#' Change response for question
+#'
+#' @importFrom dplyr filter mutate select matches
+#' @importFrom lubridate as_date
+#' @importFrom stringr str_detect
+#' @importFrom glue glue glue_collapse
+#' @importFrom rlang sym
+#'
+#' @noRd
 change_response <- function(q_name, value, chg_uuid, chg_index, relevant, env) {
   sheet <- filter(env$object$survey, name == q_name)$sheet
   type <- filter(env$object$survey, name == q_name)$type
@@ -285,17 +124,17 @@ change_response <- function(q_name, value, chg_uuid, chg_index, relevant, env) {
   }
 
   if (!is.na(chg_uuid)) {
-    env$object[[sheet]] <<- mutate(env$object[[sheet]],
+    env$object[[sheet]] <- mutate(env$object[[sheet]],
                                !!q_name := ifelse(uuid == chg_uuid, value, !!sym(q_name)))
 
     if (select_multiple) {
       for (i in 1:length(all_binary_cols)) {
-        env$object[[sheet]] <<- env$mutate(object[[sheet]],
+        env$object[[sheet]] <- env$mutate(object[[sheet]],
                                    !!all_binary_cols[i] := ifelse(uuid == chg_uuid, all_col_change, !!sym(all_binary_cols[i])))
       }
       if (!is.na(value)) {
         for (i in 1:length(selected_binary_cols)) {
-          env$object[[sheet]] <<- mutate(env$object[[sheet]],
+          env$object[[sheet]] <- mutate(env$object[[sheet]],
                                      !!selected_binary_cols[i] := ifelse(uuid == chg_uuid, 1, !!sym(selected_binary_cols[i])))
         }
       }
@@ -305,17 +144,17 @@ change_response <- function(q_name, value, chg_uuid, chg_index, relevant, env) {
   }
 
   else if (!is.na(chg_index)) {
-    env$object[[sheet]] <<- mutate(env$object[[sheet]],
+    env$object[[sheet]] <- mutate(env$object[[sheet]],
                                !!q_name := ifelse(index == chg_index, value, !!sym(q_name)))
     if (select_multiple) {
       for (i in 1:length(all_binary_cols)) {
-        env$object[[sheet]] <<- mutate(env$object[[sheet]],
+        env$object[[sheet]] <- mutate(env$object[[sheet]],
                                    !!all_binary_cols[i] := ifelse(index == chg_index, all_col_change, !!sym(all_binary_cols[i])))
       }
 
       if (!is.na(value)) {
         for (i in 1:length(selected_binary_cols)) {
-          env$object[[sheet]] <<- mutate(env$object[[sheet]],
+          env$object[[sheet]] <- mutate(env$object[[sheet]],
                                      !!selected_binary_cols[i] := ifelse(index == chg_index, 1, !!sym(selected_binary_cols[i])))
         }
       }
@@ -323,18 +162,18 @@ change_response <- function(q_name, value, chg_uuid, chg_index, relevant, env) {
   }
 
   else if (!is.na(relevant)) {
-    env$object[[sheet]] <<- mutate(env$object[[sheet]],
+    env$object[[sheet]] <- mutate(env$object[[sheet]],
                                !!q_name := ifelse(!!convert_relevant(relevant), value, !!sym(q_name)))
 
     if (select_multiple) {
       for (i in 1:length(all_binary_cols)) {
-        env$object[[sheet]] <<- mutate(env$object[[sheet]],
+        env$object[[sheet]] <- mutate(env$object[[sheet]],
                                    !!all_binary_cols[i] := ifelse(!!convert_relevant(relevant), all_col_change, !!sym(all_binary_cols[i])))
       }
 
       if (!is.na(value)) {
         for (i in 1:length(selected_binary_cols)) {
-          env$object[[sheet]] <<- mutate(env$object[[sheet]],
+          env$object[[sheet]] <- mutate(env$object[[sheet]],
                                      !!selected_binary_cols[i] := ifelse(!!convert_relevant(relevant), 1, !!sym(selected_binary_cols[i])))
         }
       }
@@ -347,7 +186,188 @@ change_response <- function(q_name, value, chg_uuid, chg_index, relevant, env) {
         "Changing all values in {q_name} to {value} since no UUID or relevant logic provided"
       )
     )
-    env$object[[sheet]] <<-
-      mutate(env$object[[sheet]], !!q_name := value)
+    env$object[[sheet]] <- mutate(env$object[[sheet]], !!q_name := value)
+  }
+}
+
+#' Add selected option for select_multiple response
+#'
+#' @importFrom dplyr filter select matches mutate
+#' @importFrom stringr str_detect
+#' @importFrom glue glue
+#' @importFrom rlang abort !! sym :=
+#'
+#' @noRd
+add_option <- function(q_name, value, add_uuid, add_index, relevant, env) {
+  sheet <- filter(env$object$survey, name == q_name)$sheet
+
+  if (!str_detect(c(filter(env$object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
+    abort(
+      glue(
+        "add_option failed to add {value} to {q_name} since it is not a select_multiple question"
+      )
+    )
+  } else {
+    binary_name <- unique(names(env$object[[sheet]] %>%
+                                  select(matches(
+                                    paste0("(\\b", q_name, ")(\\.|\\/)(", value, "\\b)")
+                                  ))))
+    l_name <- filter(env$object$survey, name == q_name)$list_name
+    choices <- filter(env$object$choices, list_name == l_name)$name
+  }
+
+  if (!is.na(add_uuid)) {
+    env$object[[sheet]] <- mutate(env$object[[sheet]],
+                               !!q_name := ifelse(uuid == add_uuid,
+                                                  select_mul_str_adder(!!sym(q_name), value, choices),
+                                                  !!sym(q_name)),
+                               !!binary_name := ifelse(uuid == add_uuid,
+                                                       TRUE,
+                                                       !!sym(binary_name)))
+  } else if (!is.na(add_index)) {
+    env$object[[sheet]] <- mutate(env$object[[sheet]],
+                               !!q_name := ifelse(index == add_index,
+                                                  select_mul_str_adder(!!sym(q_name), value, choices),
+                                                  !!sym(q_name)),
+                               !!binary_name := ifelse(index == add_index,
+                                                       TRUE,
+                                                       !!sym(binary_name)))
+  } else if (!is.na(relevant)) {
+    env$object[[sheet]] <- mutate(env$object[[sheet]],
+                               !!q_name := ifelse(!!convert_relevant(relevant),
+                                                  select_mul_str_adder(!!sym(q_name), value, choices),
+                                                  !!sym(q_name)),
+                               !!binary_name := ifelse(!!convert_relevant(relevant),
+                                                       TRUE,
+                                                       !!sym(binary_name)))
+  } else {
+    warn(
+      glue(
+        "Adding {value} to all instances of {q_name} since no UUID or relevant logic provided"
+      )
+    )
+
+    env$object[[sheet]] <- mutate(
+      env$object[[sheet]],
+      !!q_name := select_mul_str_adder(!!sym(q_name), value, choices),
+      !!binary_name := TRUE
+    )
+  }
+}
+
+#' Remove selected option from select_multiple questions
+#'
+#' @importFrom dplyr filter select matches mutate
+#' @importFrom stringr str_detect
+#' @importFrom rlang warn !! sym :=
+#' @importFrom glue glue
+#'
+#' @noRd
+remove_option <- function(q_name, value, rem_uuid, rem_index, relevant, env) {
+  sheet <- filter(env$object$survey, name == q_name)$sheet
+
+  if (!str_detect(c(filter(env$object$survey, name == q_name)$type), "^.*(select_multiple|select multiple)")) {
+    change_response(q_name, NA, rem_uuid, relevant)
+    warn(
+      glue(
+        "remove_option is removing the entire response {value} since {q_name} is a select_one question"
+      )
+    )
+  } else {
+    # Here we get the name of the select_multiple binary column to change the value for
+    binary_name <- unique(names(env$object[[sheet]] %>%
+                                  select(matches(paste0("(\\b", q_name, ")(\\.|\\/)(", value, "\\b)")))))
+  }
+
+  if (!is.na(rem_uuid)) {
+    ## making the changes if based on UUID
+    env$object[[sheet]] <- mutate(env$object[[sheet]], !!q_name := ifelse(uuid == rem_uuid,
+                                                                   select_mul_str_removal(!!sym(q_name), value),
+                                                                   !!sym(q_name)),
+                               !!binary_name := ifelse(uuid == rem_uuid, FALSE,!!sym(binary_name)))
+  }
+
+  else if (!is.na(rem_index)) {
+    ## making the changes if based on UUID
+    env$object[[sheet]] <- mutate(env$object[[sheet]], !!q_name := ifelse(index == rem_index,
+                                                                   select_mul_str_removal(!!sym(q_name), value),
+                                                                   !!sym(q_name)),
+                               !!binary_name := ifelse(index == rem_index, FALSE,!!sym(binary_name)))
+  }
+
+  else if (!is.na(relevant)) {
+    # making the changes if based on relevant logic
+    env$object[[sheet]] <- mutate(env$object[[sheet]],
+                               !!q_name := ifelse(!!convert_relevant(relevant),
+                                                  select_mul_str_removal(!!sym(q_name), value),
+                                                  !!sym(q_name)),
+                               !!binary_name := ifelse(!!convert_relevant(relevant), FALSE,!!sym(binary_name)))
+  }
+}
+
+#' Remove entries from loop data sheets
+#'
+#' @importFrom dplyr filter
+#' @importFrom rlang !!
+#'
+#' @noRd
+remove_entry <- function(sheet, rem_uuid, rem_index, relevant, env) {
+  if (!is.na(rem_uuid)) {
+    env$object[[sheet]] <- filter(env$object[[sheet]], !(uuid == rem_uuid))
+  }
+
+  else if (!is.na(rem_index)) {
+    env$object[[sheet]] <- filter(env$object[[sheet]], !(index == rem_index))
+  }
+
+  else {
+    stopifnot(!is.na(relevant))
+    relevant <- convert_relevant(relevant)
+    if (!is.na(match("uuid", names(env$object[[sheet]])))) {
+      rem_uuid <- filter(env$object[[sheet]], !(!!relevant))$uuid
+    }
+    else if (!is.na(match("index", names(env$object[[sheet]])))) {
+      rem_index <- filter(env$object[[sheet]], !(!!relevant))$index
+    }
+    env$object[[sheet]] <- filter(env$object[[sheet]], !(!!relevant))
+  }
+  child_entry_remover(sheet, rem_uuid, rem_index, env)
+}
+
+#' Remove entries from nested loop sheets
+#'
+#' @importFrom dplyr filter
+#' @importFrom purrr pmap
+#'
+#' @noRd
+child_entry_remover <- function(sheet, rem_uuid, rem_index, env) {
+  children <- filter(env$object$data_sheets, parent == sheet)$sheets
+  sheet_num <- length(children)
+
+  if (!(is.na(rem_uuid)) & sheet_num > 0) {
+    for (i in 1:sheet_num) {
+      env$object[[children[i]]] <- filter(env$object[[children[i]]], !(uuid %in% rem_uuid))
+      newborns <- filter(env$object$data_sheets, parent == sheet)$sheets
+      if (length(newborns) > 0) {
+        vars <- list(newborns,
+                     rem_uuid,
+                     rem_index)
+        pmap(vars, child_entry_remover)
+      }
+    }
+  }
+
+  else if (!(is.na(rem_index)) & sheet_num > 0) {
+    for (i in 1:sheet_num) {
+      indices <- filter(env$object[[children[i]]], parent_index %in% rem_index)$index
+      newborns <- filter(env$object$data_sheets, parent == sheet)$sheets
+      env$object[[children[i]]] <- filter(env$object[[children[i]]], !(parent_index %in% rem_index))
+      if (length(newborns) > 0) {
+        vars <- list(newborns,
+                     rem_uuid,
+                     indices)
+        pmap(vars, child_entry_remover)
+      }
+    }
   }
 }

@@ -2,10 +2,10 @@
 % Please edit documentation in R/update_relevants.R
 \name{relevant_updater}
 \alias{relevant_updater}
-\title{Function to update relevant logic}
+\title{Update data based on XLSForm relevant logic}
 \usage{
-relevant_updater(q_name, type, relevant, env)
+relevant_updater(object)
 }
 \description{
-Function to update relevant logic
+Update data based on XLSForm relevant logic
 }
