@@ -36,10 +36,10 @@ read_xls_form <- function(filepath,
 
   # Loadingsheets into kobold class object -------------------------------------
   object <- suppressWarnings(suppressMessages(new_kobold(
-    read_excel(filepath, data),
-    read_excel(filepath, cleaning),
-    read_excel(filepath, survey),
-    read_excel(filepath, choices)))
+    read_excel(filepath, data, guess_max = Inf),
+    read_excel(filepath, cleaning, col_types = "text"),
+    read_excel(filepath, survey, col_types = "text"),
+    read_excel(filepath, choices, col_types = "text")))
   )
 
   # Identifying loops and groups for each question -----------------------------
@@ -55,6 +55,7 @@ read_xls_form <- function(filepath,
                      str_detect(type, rep_reg))
   rep_groups <- rep_rows$name
   rep_parents <- rep_rows$parent
+  rep_parents[rep_parents == ""] <- "data"
 
   rep_sheets <- worksheets[worksheets %in% rep_groups]
   rep_parents <- rep_parents[rep_groups %in% rep_sheets]
@@ -72,7 +73,7 @@ read_xls_form <- function(filepath,
 
   load_sheet <- function(sheet) {
     suppressWarnings(suppressMessages(
-      object[[sheet]] <<- read_excel(filepath, sheet)
+      object[[sheet]] <<- read_excel(filepath, sheet, guess_max = Inf)
     ))
   }
 

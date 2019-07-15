@@ -2,10 +2,10 @@
 % Please edit documentation in R/cleaner.R
 \name{kobold_cleaner}
 \alias{kobold_cleaner}
-\title{Clean XLS Form survey data}
+\title{Clean XLSForm survey data}
 \usage{
 kobold_cleaner(object)
 }
 \description{
-Clean XLS Form survey data
+Clean XLSForm survey data
 }

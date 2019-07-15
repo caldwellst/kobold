@@ -34,7 +34,7 @@ separate_relevants <- function(rel_sheet, var_sheet, q_name, relevant, env) {
         }
       }
     }
-  } else if (!is.na(match("index", names(object[[var_sheet]])))) {
+  } else if (!is.na(match("index", names(env$object[[var_sheet]])))) {
     sheet_chain <- filter(env$object$data_sheets, sheets == var_sheet)$parent
 
     while (sheet_chain[1] != rel_sheet) {
@@ -49,7 +49,7 @@ separate_relevants <- function(rel_sheet, var_sheet, q_name, relevant, env) {
       if (is_empty(chg_index)) {
         i <- length(sheet_chain) + 1
       } else {
-        chg_index <- filter(object[[sheet_chain[i]]], parent_index %in% chg_index)$index
+        chg_index <- filter(env$object[[sheet_chain[i]]], parent_index %in% chg_index)$index
         i <- i + 1
       }
     }
