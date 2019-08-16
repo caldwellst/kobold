@@ -7,7 +7,7 @@
 convert_selected(string)
 }
 \arguments{
-\item{string}{String to be interpreted, should be of the format "selected(${var}, val)"}
+\item{string}{String to be interpreted, should be of the format "selected($\{var\}, val)"}
 }
 \value{
 String value of the format var %in% 'val', which can be
@@ -15,7 +15,7 @@ String value of the format var %in% 'val', which can be
   to fully intrepet relevant logic strings from XLS Form coding in `convert_relevant`.
 }
 \description{
-`convert_selected` converts selected(var, val) into an equivalent R statement.
+`convert_selected` converts selected($\{var\}, val) into an equivalent R statement.
 }
 \examples{
 convert_selected("selected(${refugee_origin}, 'hoth')")

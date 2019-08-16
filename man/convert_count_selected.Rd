@@ -7,7 +7,7 @@
 convert_count_selected(string)
 }
 \arguments{
-\item{string}{String to be interpreted, should be of the format "count-selected(${var})"}
+\item{string}{String to be interpreted, should be of the format "count-selected($\{var\})"}
 }
 \value{
 Returns a string
@@ -16,7 +16,7 @@ Returns a string
   logic strings from XLS Form coding in `convert_relevant()` and `convert_calculate()`.
 }
 \description{
-`convert_count_selected` converts count-selected(${var}) into an equivalent R statement.
+`convert_count_selected` converts count-selected($\{var\}) into an equivalent R statement.
 }
 \examples{
 convert_count_selected("count-selected(${livelihoods})")

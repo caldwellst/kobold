@@ -5,11 +5,19 @@
 \title{Extract variable names from XLS Form}
 \usage{
 var_extract(string)
+
+var_extract(string)
 }
 \arguments{
-\item{string}{String to be interpreted, should be of the format "${var}"}
+\item{string}{String to be interpreted, should be of the format "$\{var\}"}
+
+\item{string}{String to be interpreted, should be of the format "$\{var\}"}
 }
 \value{
+String value of the variable, which can be parsed for use in filtering datasets.
+  Works together with other internal functions to fully interpret relevant logic string from XLS Form
+  coding in `convert_relevant` and `convert_calculate`.
+
 String value of the variable, which can be parsed for use in filtering datasets.
   Works together with other internal functions to fully interpret relevant logic string from XLS Form
   coding in `convert_relevant` and `convert_calculate`.
@@ -17,8 +25,13 @@ String value of the variable, which can be parsed for use in filtering datasets.
 \description{
 `convert_selected` extracts the variable from the XLS Form
   format of ${variable}.
+
+`convert_selected` extracts the variable from the XLS Form
+  format of ${variable}.
 }
 \examples{
+var_extract("${supports_rebels}")
+
 var_extract("${supports_rebels}")
 
 }

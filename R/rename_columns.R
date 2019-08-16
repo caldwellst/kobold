@@ -4,6 +4,8 @@
 #' @importFrom rlang is_empty
 #' @importFrom glue glue
 #' @importFrom dplyr rename
+#'
+#' @noRd
 rename_column <- function(sheet, rename, search, env) {
   names <- names(env$object[[sheet]])
   ind <- which(str_detect(names, search))

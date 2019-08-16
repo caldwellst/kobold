@@ -1,11 +1,11 @@
 #' @title Interpret selected function from XLS Form
-#' @description `convert_selected` converts selected(var, val) into an equivalent R statement.
+#' @description `convert_selected` converts selected($\{var\}, val) into an equivalent R statement.
 #'
 #' @return String value of the format var %in% 'val', which can be
 #'   parsed for use in filtering datasets. Works together with other internal functions
 #'   to fully intrepet relevant logic strings from XLS Form coding in `convert_relevant`.
 #'
-#' @param string String to be interpreted, should be of the format "selected(${var}, val)"
+#' @param string String to be interpreted, should be of the format "selected($\{var\}, val)"
 #'
 #' @examples convert_selected("selected(${refugee_origin}, 'hoth')")
 #'
@@ -25,7 +25,7 @@ convert_selected <- function(string) {
 #'   Works together with other internal functions to fully interpret relevant logic string from XLS Form
 #'   coding in `convert_relevant` and `convert_calculate`.
 #'
-#' @param string String to be interpreted, should be of the format "${var}"
+#' @param string String to be interpreted, should be of the format "$\{var\}"
 #'
 #' @examples var_extract("${supports_rebels}")
 #'
@@ -34,16 +34,34 @@ var_extract <- function(string) {
   str_match(string, "\\$\\{(.*?)\\}")[,2]
 }
 
+#' @title Extract variable names from XLS Form
+#' @description `convert_selected` extracts the variable from the XLS Form
+#'   format of ${variable}.
+#'
+#' @return String value of the variable, which can be parsed for use in filtering datasets.
+#'   Works together with other internal functions to fully interpret relevant logic string from XLS Form
+#'   coding in `convert_relevant` and `convert_calculate`.
+#'
+#' @param string String to be interpreted, should be of the format "$\{var\}"
+#'
+#' @examples var_extract("${supports_rebels}")
+#'
+#' @importFrom stringr str_match
+var_extract <- function(string) {
+  str_match(string, "\\$\\{(.*?)\\}")[,2]
+}
+
+
 #' Interpret count-selected function from XLS Form
 #'
-#' `convert_count_selected` converts count-selected(${var}) into an equivalent R statement.
+#' `convert_count_selected` converts count-selected($\{var\}) into an equivalent R statement.
 #'
 #' @return Returns a string
 #'   value of the format `str_count(var, ' ')`, which can be parsed for use in filtering
 #'   datasets. Works together with other internal functions to fully intrepet relevant
 #'   logic strings from XLS Form coding in `convert_relevant()` and `convert_calculate()`.
 #'
-#' @param string String to be interpreted, should be of the format "count-selected(${var})"
+#' @param string String to be interpreted, should be of the format "count-selected($\{var\})"
 #'
 #' @examples convert_count_selected("count-selected(${livelihoods})")
 #'
@@ -53,33 +71,15 @@ convert_count_selected <- function(string) {
    paste0("str_count(", var, ", ' ')")
 }
 
-#' Interpret sum-at function from XLS Form
-#'
-#' `convert_sum` converts sum(${var}) into an equivalent R statement.
-#'
-#' @return Returns a string
-#' value of the format kobold_sum(var). Works together with other internal functions to fully intrepet calculate
-#' strings from XLS Form coding in `convert_calculate`.
-#'
-#' @param string String to be interpreted, should be of the format "sum(${var})"
-#'
-#' @examples sum(${hh_member})
-#'
-#' @noRd
-convert_sum <- function(string) {
-  var <- var_extract(string)
-  paste0("kobold_sum(", var, ")")
-}
-
 #' Interpret coalesce function from XLS Form
 #'
-#' `convert_coalesce` converts coalesce(${var}, n) into an equivalent R statement.
+#' `convert_coalesce` converts coalesce($\{var\}, n) into an equivalent R statement.
 #'
 #' @return Returns a string
 #' value of the format coalesce(var, ' '). Works together with other internal functions to fully intrepet relevant
 #' logic strings from XLS Form coding in `convert_calculate`.
 #'
-#' @param string String to be interpreted, should be of the format "coalesce(${var}, n)"
+#' @param string String to be interpreted, should be of the format "coalesce($\{var\}, n)"
 #'
 #' @examples `coalesce(${male_3_5}, 0)`
 #'
@@ -94,14 +94,14 @@ convert_coalesce <- function(string) {
 
 #' Interpret selected-at function from XLS Form
 #'
-#' `convert_selected_at` converts selected-at(${var}, n) into an equivalent R statement.
+#' `convert_selected_at` converts selected-at($\{var\}, n) into an equivalent R statement.
 #'
 #' @return Returns a string
 #' value of the format str_count(var, ' '), which can be parsed for use in filtering
 #' datasets. Works together with other internal functions to fully intrepet strings from
 #' XLS Form coding in `convert_relevant` and `convert_calculate`.
 #'
-#' @param string String to be interpreted, should be of the format "count-selected(${var})"
+#' @param string String to be interpreted, should be of the format "count-selected($\{var\})"
 #'
 #' @examples convert_selected_at("selected_at(${biggest_needs}, 1)")
 #'
@@ -121,7 +121,7 @@ convert_selected_at <- function(string) {
 #' value of the format `is.na(var)` or `!is.na(var)`. Works together with other internal functions to fully intrepet calculate
 #' strings from XLS Form coding in `convert_calculate`.
 #'
-#' @param string String to be interpreted, should be of the format "convert_logical_blanks(${var} = '')"
+#' @param string String to be interpreted, should be of the format "convert_logical_blanks($\{var\} = '')"
 #'
 #' @examples `convert_logical_blanks("${hh_needs} = ''")`
 #'
@@ -231,14 +231,13 @@ convert_relevant <- function(string) {
 #'
 #' @importFrom stringr str_replace_all
 #' @importFrom rlang parse_expr
+#' @importFrom lubridate as_date
 #'
 #' @export
 convert_calc <- function(string) {
   string <- str_replace_all(string, "count-selected\\((.*?)\\)", convert_count_selected)
   string <- str_replace_all(string, "selected-at\\((.*?)\\)", convert_selected_at)
   string <- str_replace_all(string, "selected\\((.*?)\\)", convert_selected)
-  string <- str_replace_all(string, "sum\\((.*?)\\)", convert_sum)
-  string <- str_replace_all(string, "coalesce\\((.*?)\\)", convert_coalesce)
   string <- str_replace_all(string, "jr\\:choice\\-name\\((.*?)\\)", convert_choice_name)
   string <- str_replace_all(string, c("\\band\\b" = "&",
                                       "\\bor\\b" = "|",
@@ -247,15 +246,16 @@ convert_calc <- function(string) {
                                       "if(" = "ifelse(",
                                       "div" = "/",
                                       "mod" = "%%",
-                                      "concat" = "paste0",
+                                      "decimal-date-time" = "as_date",
+                                      "concat\\(" = "paste0\\(",
                                       "int" = "floor",
                                       "number" = "as.numeric",
-                                      "true()" = "TRUE",
-                                      "false()" = "FALSE",
-                                      "max(" = "kobold_max(",
-                                      "min(" = "kobold_min(",
-                                      "sum(" = "kobold_sum(",
-                                      "random(" = "runif("))
+                                      "true\\(\\)" = "TRUE",
+                                      "false\\(\\)" = "FALSE",
+                                      "max\\(" = "kobold_max(",
+                                      "min\\(" = "kobold_min(",
+                                      "sum\\(" = "kobold_sum(",
+                                      "random\\(" = "runif("))
   string <- str_replace_all(string, "\\$\\{(.*?)\\}", var_extract)
   relevant_expr <- parse_expr(string)
   return(relevant_exp)

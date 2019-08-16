@@ -7,7 +7,7 @@
 convert_selected_at(string)
 }
 \arguments{
-\item{string}{String to be interpreted, should be of the format "count-selected(${var})"}
+\item{string}{String to be interpreted, should be of the format "count-selected($\{var\})"}
 }
 \value{
 Returns a string
@@ -16,7 +16,7 @@ datasets. Works together with other internal functions to fully intrepet strings
 XLS Form coding in `convert_relevant` and `convert_calculate`.
 }
 \description{
-`convert_selected_at` converts selected-at(${var}, n) into an equivalent R statement.
+`convert_selected_at` converts selected-at($\{var\}, n) into an equivalent R statement.
 }
 \examples{
 convert_selected_at("selected_at(${biggest_needs}, 1)")

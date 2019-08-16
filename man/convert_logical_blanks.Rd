@@ -7,7 +7,7 @@
 convert_logical_blanks(string)
 }
 \arguments{
-\item{string}{String to be interpreted, should be of the format "convert_logical_blanks(${var} = '')"}
+\item{string}{String to be interpreted, should be of the format "convert_logical_blanks($\{var\} = '')"}
 }
 \value{
 Returns a string
