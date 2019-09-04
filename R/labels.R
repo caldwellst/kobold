@@ -32,4 +32,5 @@ choices_to_names <- function(sheet, language = NULL, env) {
 choice_labels_to_names <- function(object, language = NULL) {
   env <- current_env()
   walk(object$data_sheets, choices_to_names, language = language, env)
+  env$object
 }
