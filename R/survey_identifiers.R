@@ -46,7 +46,7 @@ identify_groups <- function(env) {
   }
 }
 
-#' Funtion to identify list_name for select questions
+#' Function to identify list_name for select questions
 #'
 #' @importFrom stringr str_remove_all str_detect
 #'
