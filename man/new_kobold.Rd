@@ -4,7 +4,7 @@
 \alias{new_kobold}
 \title{Generic kobold generator}
 \usage{
-new_kobold(data, cleaning, survey, choices)
+new_kobold(survey, choices, data, cleaning)
 }
 \description{
 Generic kobold generator

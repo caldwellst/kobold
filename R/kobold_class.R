@@ -108,9 +108,23 @@ as_tibble.kobold <- function(df) {
 }
 
 #' Generic kobold generator
+#'
+#' @importFrom tibble as_tibble
 new_kobold <- function(survey, choices, data, cleaning) {
+  if (!is.null(choices)) {
+    choices <- as_tibble(choices)
+  }
+
+  if (!is.null(data)) {
+    data <- as_tibble(data)
+  }
+
+  if (!is.null(cleaning)) {
+    cleaning <- as_tibble(cleaning)
+  }
+
   object <- list(
-    survey = survey,
+    survey = as_tibble(survey),
     choices = choices,
     data = data,
     cleaning = cleaning
