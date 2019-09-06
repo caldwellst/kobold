@@ -108,12 +108,12 @@ as_tibble.kobold <- function(df) {
 }
 
 #' Generic kobold generator
-new_kobold <- function(data, cleaning, survey, choices) {
+new_kobold <- function(survey, choices, data, cleaning) {
   object <- list(
-    data = data,
-    cleaning = cleaning,
     survey = survey,
-    choices = choices
+    choices = choices,
+    data = data,
+    cleaning = cleaning
   )
 
   env <- current_env()
