@@ -2,22 +2,10 @@
 % Please edit documentation in R/kobold_class.R
 \name{new_kobold}
 \alias{new_kobold}
-\title{Create a kobold list from an XLS Form}
+\title{Generic kobold generator}
 \usage{
 new_kobold(data, cleaning, survey, choices)
 }
-\arguments{
-\item{data}{Name of sheet containing data.}
-
-\item{cleaning}{Name of sheet containing cleaning code.}
-
-\item{survey}{Name of sheet containing XLSForm survey.}
-
-\item{choices}{Name of sheet containing XLSForm choices.}
-}
 \description{
-Constructor of a kobold list using XLSForm survey and choices and other possible sheets:
-* Main data sheet
-* Loop data sheet(s), which do not need to be explicitly loaded
-* Cleaning sheet
+Generic kobold generator
 }

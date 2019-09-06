@@ -3,6 +3,7 @@
 #' @importFrom rlang current_env abort
 #' @importFrom purrr pmap
 #'
+#' @export
 kobold_cleaner <- function(object) {
 
   # Getting current environment

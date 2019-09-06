@@ -4,19 +4,19 @@
 \alias{read_xls_form}
 \title{Load XLS Form file}
 \usage{
-read_xls_form(filepath, data = "data", cleaning = "cleaning",
-  survey = "survey", choices = "choices")
+read_xls_form(filepath, survey = "survey", choices = NULL,
+  data = NULL, cleaning = NULL)
 }
 \arguments{
 \item{filepath}{Path to the XLS Form}
 
-\item{data}{Name of the data worksheet, Default: 'data'}
-
-\item{cleaning}{Name of the cleaning worksheet, Default: 'cleaning'}
-
 \item{survey}{Name of the survey worksheet, Default: 'survey'}
 
 \item{choices}{Name of the choices worksheet, optional, Default: 'choices';}
+
+\item{data}{Name of the data worksheet, Default: 'data'}
+
+\item{cleaning}{Name of the cleaning worksheet, Default: 'cleaning'}
 }
 \value{
 Returns a \code{kobold} class object, a modified list containing the above data frames.

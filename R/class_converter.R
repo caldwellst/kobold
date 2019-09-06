@@ -1,7 +1,10 @@
-#' Function for converting non-select multiple columns to the proper type
+#' Function for converting columns to the proper type
+#'
 #' @importFrom rlang caller_env env_names
 #' @importFrom stringr str_c
 #' @importFrom dplyr mutate_at one_of vars
+#'
+#' @noRd
 convert_columns <- function(sheet, types, converter, env) {
   types <- str_c(types, collapse = "|")
   types <- str_c("^(?!.*select).*(", types, ").*")
@@ -18,9 +21,12 @@ convert_columns <- function(sheet, types, converter, env) {
 }
 
 #' Function for converting columns of select multiple individual options to logical vectors
+#'
 #' @importFrom dplyr filter select mutate_all matches
 #' @importFrom stringr str_c str_detect
 #' @importFrom glue glue
+#'
+#' @noRd
 convert_select_multiple <- function(sheet, env) {
   sel_mul_reg <- "^.*(select_multiple|select multiple)"
   list_rows <- filter(env$object$survey, str_detect(type, sel_mul_reg))

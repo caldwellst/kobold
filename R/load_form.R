@@ -25,28 +25,37 @@
 #'
 #' @export
 read_xls_form <- function(filepath,
-                          data = "data",
-                          cleaning = "cleaning",
                           survey = "survey",
-                          choices = "choices") {
+                          choices = NULL,
+                          data = NULL,
+                          cleaning = NULL) {
 
   env <- current_env()
 
   worksheets <- excel_sheets(filepath)
 
+  survey <- read_excel(filepath, survey, col_types = "text")
+
+  if (!is.null(choices)) {
+    choices <- read_excel(filepath, choices, col_types = "text")
+  }
+
+  if (!is.null(data)) {
+    data <- read_excel(filepath, data, guess_max = Inf)
+  }
+
+  if (!is.null(cleaning)) {
+    cleaning <- read_excel(filepath, cleaning, col_types = "text")
+  }
+
+
   # Loadingsheets into kobold class object -------------------------------------
   object <- suppressWarnings(suppressMessages(new_kobold(
-    read_excel(filepath, data, guess_max = Inf),
-    read_excel(filepath, cleaning, col_types = "text"),
-    read_excel(filepath, survey, col_types = "text"),
-    read_excel(filepath, choices, col_types = "text")))
+    survey = survey,
+    choices = choices,
+    data = data,
+    cleaning = cleaning))
   )
-
-  # Identifying loops and groups for each question -----------------------------
-  identify_groups(env)
-
-  # Identify list name for select questions ------------------------------------
-  identify_list_name(env)
 
   # Identify repeat group worksheets -------------------------------------------
 
