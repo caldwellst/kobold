@@ -19,6 +19,7 @@ get_list_name <- function(q_name, env) {
 #' Retrive choices for question
 #'
 #' @importFrom dplyr filter
+#' @importFrom stringr str_detect
 #'
 #' @noRd
 get_choices <- function(q_name, type = "names", language = NULL, env) {
@@ -28,7 +29,9 @@ get_choices <- function(q_name, type = "names", language = NULL, env) {
     choices$name
   } else if (type == "labels") {
     if (!is.null(language)) {
-      col <- paste0("label::", language)
+      cols <- names(env$object$choices)
+      col <- str_detect(cols, paste0("label[\\W]{2}(?i)", language))
+      col <- cols[col]
     } else {
       col <- "label"
     }

@@ -138,5 +138,8 @@ new_kobold <- function(survey, choices, data, cleaning) {
   # Identify list name for select questions ------------------------------------
   identify_list_name(env)
 
+  # Finalize the beautiful kobold object ---------------------------------------
   class(object) <- c("kobold", class(object))
+
+  return(object)
 }

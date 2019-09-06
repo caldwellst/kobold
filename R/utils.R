@@ -16,3 +16,10 @@ ellipsis_names <- function(...) {
   args <- as.list(substitute(list(...)))[-1L]
   map_chr(args, deparse)
 }
+
+#' Pad text string with regex start and finish characters, ^ and $
+#'
+#' @noRd
+pad_start_end <- function(string) {
+  paste0("^", string, "$")
+}

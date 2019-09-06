@@ -20,9 +20,6 @@ identify_groups <- function(env) {
   group <- c("")
   i <- 1
 
-  print(env$object)
-  print(env)
-
   while (i <= nrow(env$object$survey)) {
     type <- env$object$survey$type[i]
 
