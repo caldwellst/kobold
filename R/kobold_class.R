@@ -22,7 +22,7 @@
 #'
 #' @export
 kobold <- function(survey, choices = NULL, data = NULL, cleaning = NULL, ...) {
-  object <- new_kobold(data, cleaning, survey, choices)
+  object <- new_kobold(survey, choices, data, cleaning)
 
   env <- current_env()
 
