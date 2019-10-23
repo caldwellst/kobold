@@ -1,3 +1,11 @@
+#' Basic type conversion for predicting values before specifying
+#' @importFrom readr type_convert
+#'
+#' @noRd
+convert_predict <- function(sheet, env) {
+  suppressWarnings(suppressMessages(env$object[[sheet]] <- type_convert(env$object[[sheet]])))
+}
+
 #' Function for converting columns to the proper type
 #'
 #' @importFrom rlang caller_env env_names
@@ -10,13 +18,12 @@ convert_columns <- function(sheet, types, converter, env) {
   types <- str_c("^(?!.*select).*(", types, ").*")
 
   name_rows <- filter(env$object$survey,
-                      str_detect(type, types))
+                      str_detect(type, types) & sheet %in% (!!sheet))
+
   cnv_names <- name_rows$name
-  sht_names <- names(env$object[[sheet]])
-  cols <- unique(cnv_names[cnv_names %in% sht_names])
   suppressWarnings(suppressMessages(env$object[[sheet]] <-
                                       env$object[[sheet]] %>% mutate_at(vars(
-                                        one_of(cols)
+                                        one_of(cnv_names)
                                       ), converter)))
 }
 
@@ -68,6 +75,10 @@ convert_select_multiple <- function(sheet, env) {
 #' @importFrom purrr map
 #' @importFrom lubridate as_datetime as_date
 class_converter <- function(env) {
+  map(env$object$data_sheets$sheets,
+      convert_predict,
+      env)
+
   map(env$object$data_sheets$sheets,
       convert_columns,
       c("decimal", "integer", "range"),

@@ -25,6 +25,7 @@ separate_relevants <- function(rel_sheet, var_sheet, q_name, relevant, env) {
                                         !!q_name := ifelse(uuid %in% chg_uuid,
                                                            NA,
                                                            !!sym(q_name)))
+
       if (select_multiple) {
         for (i in 1:length(binary_names)) {
           env$object[[var_sheet]] <- mutate(env$object[[var_sheet]],
@@ -93,7 +94,10 @@ same_relevants <- function(sheet, q_name, relevant, env) {
                                                                 !!sym(binary_names[i])))
     }
   }
-
+  if (q_name == "hh_member_attending_education") {
+    print(relevant)
+    print(filter(env$object[[sheet]], !(!!convert_relevant(relevant))))
+  }
   env$object[[sheet]] <- mutate(env$object[[sheet]],
                                 !!q_name := ifelse(!(!!convert_relevant(relevant)),
                                                    NA,
@@ -110,19 +114,21 @@ same_relevants <- function(sheet, q_name, relevant, env) {
 #'
 #' @noRd
 relevant_determiner <- function(q_name, type, relevant, env) {
+
   group_rgx <- "^.*(begin_group|begin group|begin repeat|begin_repeat)"
   group <- str_detect(type, group_rgx)
 
-  # Ensure variables within gropus get relevants ------------
+  end_group_rgx <- "^.*(end_group|end group|end repeat|end_repeat)"
+  end_group <- str_detect(type, end_group_rgx)
+
+  # Ensure variables within groups get relevants ------------
   if (group) {
     group_name <- glue("\\b{q_name}\\b")
-    indices <- str_detect(env$object$survey$group, group_name) & !str_detect(env$object$survey$type, group_rgx)
-    vars <- env$object$survey$name[indices]
-    types <- env$object$survey$type[indices]
-    types <- types[!is.na(vars)]
-    vars <- vars[!is.na(vars)]
+    var_rows <- filter(env$object$survey, str_detect(group, (!!group_name)) & !str_detect(type, (!!group_rgx)) & sheet %in% env$object$data_sheets$sheets & !is.na(name))
+    vars <- var_rows$name
+    types <- var_rows$type
     map2(vars, types, relevant_determiner, relevant, env)
-  } else {
+  } else if (!end_group) {
     srch_term <- "\\$\\{(.*?)\\}"
     relevant_vars <- str_match_all(relevant, srch_term)[[1]][,2]
     relevant_vars <- unique(relevant_vars)
@@ -131,6 +137,7 @@ relevant_determiner <- function(q_name, type, relevant, env) {
     rel_sheets <- env$object$survey$sheet[rel_indices]
     rel_sheets <- unique(rel_sheets)
     var_sheet <- filter(env$object$survey, name == q_name)$sheet
+
     if (length(rel_sheets) > 1) {
       warn(glue("Can't correct for {q_name} relevant logic since it references two or more data sheets."))
     } else if (var_sheet == rel_sheets) {
@@ -151,7 +158,7 @@ relevant_determiner <- function(q_name, type, relevant, env) {
 relevant_updater <- function(object) {
   env <- current_env()
   relevant_data <- filter(object$survey,
-                          !is.na(relevant))
+                          (!is.na(relevant)) & sheet %in% object$data_sheets$sheets)
   pmap(list(relevant_data$name,
             relevant_data$type,
             relevant_data$relevant),

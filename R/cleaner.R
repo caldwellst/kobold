@@ -2,6 +2,7 @@
 #'
 #' @importFrom rlang current_env abort
 #' @importFrom purrr pmap
+#' @importFrom readr type_convert
 #'
 #' @export
 kobold_cleaner <- function(object) {
@@ -75,11 +76,11 @@ kobold_cleaner <- function(object) {
     general_cleaner, env
   )
 
-  # Updating the relevant logic for the data
-  object <- relevant_updater(object)
-
   # Converting the columns for each type
   class_converter(env)
+
+  # Updating the relevant logic for the data
+  object <- relevant_updater(object)
 
   return(object)
 }

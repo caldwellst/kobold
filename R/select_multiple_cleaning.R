@@ -52,7 +52,7 @@ sm_na_replacer <- function(q_name, value, filter_expr, var_uuid, var_index, rele
 #'
 #' @noRd
 sm_val_remover <- function(q_name, value, filter_expr, var_uuid, var_index, relevant, sheet, env) {
-  choices <- get_choices(q_name, env)
+  choices <- get_choices(q_name, env = env)
   cols <- get_binary_cols(q_name, sheet, choices, env)
   env$object[[sheet]] <- mutate_at(env$object[[sheet]], c(q_name, cols),
                                    ~ ifelse(!!filter_expr & !!sym(q_name) == "", NA, .x))
@@ -90,7 +90,7 @@ add_option <- function(q_name, value, var_uuid, var_index, relevant, env) {
     filter_expr <- filter_expr_generator(var_index, var_uuid, relevant)
     sheet <- get_sheet(q_name, env)
     binary_name <- get_binary_cols(q_name, sheet, value, env)
-    choices <- get_choices(q_name, env)
+    choices <- get_choices(q_name, env = env)
 
     if (is.null(filter_expr)) {
       filter_expr <- rep(T, nrow(env$object[[sheet]]))

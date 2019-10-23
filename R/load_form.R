@@ -16,6 +16,7 @@
 #' @return Returns a \code{kobold} class object, a modified list containing the above data frames.
 #'
 #' @importFrom readxl excel_sheets read_excel
+#' @importFrom readr type_convert
 #' @importFrom stringr str_detect
 #' @importFrom dplyr filter
 #' @importFrom purrr map
@@ -42,6 +43,7 @@ read_xls_form <- function(filepath,
 
   if (!is.null(data)) {
     data <- read_excel(filepath, data, guess_max = Inf)
+    data <- type_convert(data)
   }
 
   if (!is.null(cleaning)) {
@@ -82,7 +84,7 @@ read_xls_form <- function(filepath,
 
   load_sheet <- function(sheet) {
     suppressWarnings(suppressMessages(
-      object[[sheet]] <<- read_excel(filepath, sheet, guess_max = Inf)
+      object[[sheet]] <<- type_convert(read_excel(filepath, sheet, guess_max = Inf))
     ))
   }
 
@@ -118,6 +120,7 @@ read_xls_form <- function(filepath,
   }
 
   # Converting the columns according to type -----------------------------------
+
   class_converter(env)
 
   return(object)
