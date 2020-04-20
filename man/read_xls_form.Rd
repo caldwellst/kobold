@@ -4,8 +4,13 @@
 \alias{read_xls_form}
 \title{Load XLS Form file}
 \usage{
-read_xls_form(filepath, survey = "survey", choices = NULL,
-  data = NULL, cleaning = NULL)
+read_xls_form(
+  filepath,
+  survey = "survey",
+  choices = NULL,
+  data = NULL,
+  cleaning = NULL
+)
 }
 \arguments{
 \item{filepath}{Path to the XLS Form}

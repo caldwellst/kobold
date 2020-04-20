@@ -94,10 +94,6 @@ same_relevants <- function(sheet, q_name, relevant, env) {
                                                                 !!sym(binary_names[i])))
     }
   }
-  if (q_name == "hh_member_attending_education") {
-    print(relevant)
-    print(filter(env$object[[sheet]], !(!!convert_relevant(relevant))))
-  }
   env$object[[sheet]] <- mutate(env$object[[sheet]],
                                 !!q_name := ifelse(!(!!convert_relevant(relevant)),
                                                    NA,
@@ -154,7 +150,7 @@ relevant_determiner <- function(q_name, type, relevant, env) {
 #' @importFrom purrr pmap
 #' @importFrom dplyr filter
 #'
-#'
+#' @export
 relevant_updater <- function(object) {
   env <- current_env()
   relevant_data <- filter(object$survey,

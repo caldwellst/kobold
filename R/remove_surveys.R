@@ -6,7 +6,6 @@
 #' @noRd
 remove_entry <- function(sheet, var_uuid, var_index, relevant, env) {
   filter_expr <- filter_expr_generator(var_index, var_uuid, relevant)
-  print(var_index)
   var_index <- filter(env$object[[sheet]], !!filter_expr)$index
   env$object[[sheet]] <- filter(env$object[[sheet]], !(!!filter_expr))
   child_entry_remover(sheet, var_index, env)

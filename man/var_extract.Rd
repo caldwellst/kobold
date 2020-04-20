@@ -10,8 +10,6 @@ var_extract(string)
 }
 \arguments{
 \item{string}{String to be interpreted, should be of the format "$\{var\}"}
-
-\item{string}{String to be interpreted, should be of the format "$\{var\}"}
 }
 \value{
 String value of the variable, which can be parsed for use in filtering datasets.

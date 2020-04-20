@@ -6,7 +6,6 @@
 #'
 #'@noRd
 choice_namer <- function(q_name, sheet, language = NULL, env) {
-  print(q_name)
   labels <- get_choices(q_name, type = "labels", language = language, env)
   labels <- escape_string(labels)
   labels <- pad_start_end(labels)
@@ -24,7 +23,6 @@ choice_namer <- function(q_name, sheet, language = NULL, env) {
 #'
 #'@noRd
 choice_labeler <- function(q_name, sheet, language = NULL, env) {
-  print(q_name)
   labels <- get_choices(q_name, type = "labels", language = language, env)
   names <- get_choices(q_name = q_name, env = env)
   names <- pad_start_end(names)
