@@ -65,6 +65,7 @@ sm_val_remover <- function(q_name, value, filter_expr, var_uuid, var_index, rele
 #'
 #' @noRd
 get_binary_cols <- function(q_name, sheet, choices, env) {
+  choices <- choices %>% str_replace_all(c("\\("="\\\\(","\\)"="\\\\)")) #escape parentheses
   search_rgx <- glue("(\\b{q_name})(\\.|\\/)({choices}\\b)")
   search_rgx <- glue_collapse(search_rgx, sep = "|")
   unique(names(env$object[[sheet]] %>%
